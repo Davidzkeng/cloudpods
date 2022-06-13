@@ -40,6 +40,7 @@ const (
 	HOST_TYPE_CLOUDPODS   = "cloudpods"
 	HOST_TYPE_NUTANIX     = "nutanix"
 	HOST_TYPE_BINGO_CLOUD = "bingocloud"
+	HOST_TYPE_WINSTACK    = "winstack"
 
 	HOST_TYPE_DEFAULT = HOST_TYPE_HYPERVISOR
 
