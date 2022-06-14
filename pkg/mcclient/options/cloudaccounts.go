@@ -88,6 +88,16 @@ type SOpenStackCredentialWithAuthURL struct {
 	AuthURL string `help:"OpenStack auth_url" positional:"true" json:"auth_url"`
 }
 
+type SWinStackCredential struct {
+	SUserPasswordCredential
+}
+
+type SWinStackCredentialWithAuthURL struct {
+	SWinStackCredential
+
+	AuthURL string `help:"WinStack auth_url" positional:"true" json:"auth_url"`
+}
+
 type SAccessKeyCredential struct {
 	AccessKeyID     string `help:"Access_key_id" positional:"true"`
 	AccessKeySecret string `help:"Access_key_secret" positional:"true"`
@@ -1108,4 +1118,32 @@ type SBingoCloudAccountUpdateCredentialOptions struct {
 
 func (opts *SBingoCloudAccountUpdateCredentialOptions) Params() (jsonutils.JSONObject, error) {
 	return jsonutils.Marshal(opts.SAccessKeyCredential), nil
+}
+
+type SWinStackCloudAccountCreateOptions struct {
+	SCloudAccountCreateBaseOptions
+	SWinStackCredentialWithAuthURL
+}
+
+func (opts *SWinStackCloudAccountCreateOptions) Params() (jsonutils.JSONObject, error) {
+	params := jsonutils.Marshal(opts)
+	params.(*jsonutils.JSONDict).Add(jsonutils.NewString("WinStack"), "provider")
+	return params, nil
+}
+
+type SWinStackCloudAccountUpdateOptions struct {
+	SCloudAccountUpdateBaseOptions
+}
+
+func (opts *SWinStackCloudAccountUpdateOptions) Params() (jsonutils.JSONObject, error) {
+	return jsonutils.Marshal(opts), nil
+}
+
+type SWinStackCloudAccountUpdateCredentialOptions struct {
+	SCloudAccountIdOptions
+	SWinStackCredential
+}
+
+func (opts *SWinStackCloudAccountUpdateCredentialOptions) Params() (jsonutils.JSONObject, error) {
+	return jsonutils.Marshal(opts), nil
 }

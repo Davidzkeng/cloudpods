@@ -148,7 +148,6 @@ func (s *SDisk) GetStatus() string {
 func (s *SStorage) GetIDisks() ([]cloudprovider.ICloudDisk, error) {
 	ret := make([]cloudprovider.ICloudDisk, 0)
 	disks, err := s.getDisks()
-	fmt.Println("disks", len(disks))
 	if err != nil {
 		return nil, err
 	}

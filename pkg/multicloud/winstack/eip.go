@@ -15,118 +15,191 @@
 package winstack
 
 import (
-	"time"
+	"strconv"
+	"yunion.io/x/log"
+	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
-	"yunion.io/x/onecloud/pkg/util/billing"
+	"yunion.io/x/onecloud/pkg/multicloud"
+	"yunion.io/x/pkg/errors"
+)
+
+const (
+	FLOAT_IP_LIST = "/api/network/floatIps"
 )
 
 type SEip struct {
-}
+	multicloud.SEipBase
+	multicloud.WinStackTags
 
-func (s *SEip) GetBillingType() string {
-	panic("implement me")
-}
+	region *SRegion
 
-func (s *SEip) GetExpiredAt() time.Time {
-	panic("implement me")
-}
-
-func (s *SEip) SetAutoRenew(bc billing.SBillingCycle) error {
-	panic("implement me")
-}
-
-func (s *SEip) Renew(bc billing.SBillingCycle) error {
-	panic("implement me")
-}
-
-func (s *SEip) IsAutoRenew() bool {
-	panic("implement me")
+	Id             string `json:"id"`
+	Ip             string `json:"ip"`
+	VpcId          string `json:"vpcId"`
+	VpcName        string `json:"vpcName"`
+	MappingIp      string `json:"mappingIp"`
+	BindDevType    string `json:"bindDevType"`
+	BindDevName    string `json:"bindDevName"`
+	BindDevId      string `json:"bindDevId"`
+	ExtNetworkId   string `json:"extNetworkId"`
+	ExtNetworkName string `json:"extNetworkName"`
 }
 
 func (s *SEip) GetId() string {
-	panic("implement me")
+	return s.Ip
 }
 
 func (s *SEip) GetName() string {
-	panic("implement me")
+	return s.Ip
 }
 
 func (s *SEip) GetGlobalId() string {
-	panic("implement me")
-}
-
-func (s *SEip) GetCreatedAt() time.Time {
-	panic("implement me")
+	return s.Ip
 }
 
 func (s *SEip) GetStatus() string {
-	panic("implement me")
-}
-
-func (s *SEip) Refresh() error {
-	panic("implement me")
-}
-
-func (s *SEip) IsEmulated() bool {
-	panic("implement me")
-}
-
-func (s *SEip) GetSysTags() map[string]string {
-	panic("implement me")
-}
-
-func (s *SEip) GetTags() (map[string]string, error) {
-	panic("implement me")
-}
-
-func (s *SEip) SetTags(tags map[string]string, replace bool) error {
-	panic("implement me")
+	return api.EIP_STATUS_READY
 }
 
 func (s *SEip) GetProjectId() string {
-	panic("implement me")
+	return ""
 }
 
 func (s *SEip) GetIpAddr() string {
-	panic("implement me")
+	return s.Ip
 }
 
 func (s *SEip) GetMode() string {
-	panic("implement me")
+	return api.EIP_MODE_STANDALONE_EIP
 }
 
 func (s *SEip) GetINetworkId() string {
-	panic("implement me")
+	networks, err := s.region.GetNetworks(s.VpcId)
+	if err != nil {
+		log.Errorf("failed to find vpc id for eip %s(%s), error: %v", s.Ip, s.VpcId, err)
+		return ""
+	}
+	for i := range networks {
+		if networks[i].Contains(s.Ip) {
+			return networks[i].GetGateway()
+		}
+	}
+	log.Errorf("failed to find eip %s(%s) networkId", s.Ip, s.VpcId)
+
+	return ""
 }
 
 func (s *SEip) GetAssociationType() string {
-	panic("implement me")
+	switch s.BindDevType {
+	case "VM":
+		return api.EIP_ASSOCIATE_TYPE_SERVER
+	}
+	return ""
 }
 
 func (s *SEip) GetAssociationExternalId() string {
-	panic("implement me")
+	if s.BindDevType == "VM" {
+		return s.BindDevId
+	}
+	return ""
 }
 
 func (s *SEip) GetBandwidth() int {
-	panic("implement me")
+	return 0
 }
 
 func (s *SEip) GetInternetChargeType() string {
-	panic("implement me")
+	return api.EIP_CHARGE_TYPE_BY_TRAFFIC
 }
 
 func (s *SEip) Delete() error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SEip) Associate(conf *cloudprovider.AssociateConfig) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SEip) Dissociate() error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SEip) ChangeBandwidth(bw int) error {
-	panic("implement me")
+	return cloudprovider.ErrNotSupported
+}
+
+func (s *SRegion) GetIEips() ([]cloudprovider.ICloudEIP, error) {
+	ret := make([]cloudprovider.ICloudEIP, 0)
+	eips, err := s.getEips()
+	if err != nil {
+		return nil, err
+	}
+	for i := range eips {
+		eips[i].region = s
+		ret = append(ret, &eips[i])
+	}
+	return ret, nil
+}
+
+func (s *SRegion) GetIEipById(eipId string) (cloudprovider.ICloudEIP, error) {
+	eip, err := s.getEip(eipId)
+	if err != nil {
+		return nil, err
+	}
+	eip.region = s
+	return eip, nil
+}
+
+func (s *SRegion) getEips() ([]SEip, error) {
+	var eips []SEip
+	start, size := 0, 10
+	for {
+		ret, err := s.GetEips("", start, size)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret {
+			eips = append(eips, ret[i])
+		}
+		if len(ret) < size {
+			break
+		}
+		start += size
+	}
+	return eips, nil
+}
+
+func (s *SRegion) getEip(id string) (*SEip, error) {
+	eips, err := s.getEips()
+	if err != nil {
+		return nil, err
+	}
+	for i := range eips {
+		if eips[i].GetGlobalId() == id {
+			return &eips[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+}
+func (s *SRegion) GetEips(id string, start, size int) ([]SEip, error) {
+	query := make(map[string]string)
+	if size <= 0 {
+		size = 10
+	}
+	if start < 0 {
+		start = 0
+	}
+	if len(id) > 0 {
+		query["id"] = id
+		start = 0
+	}
+	query["start"] = strconv.Itoa(start)
+	query["size"] = strconv.Itoa(size)
+	resp, err := s.client.invokeGET(FLOAT_IP_LIST, nil, query)
+	if err != nil {
+		return nil, err
+	}
+	var ret []SEip
+
+	return ret, resp.Unmarshal(&ret, "data")
 }

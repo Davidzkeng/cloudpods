@@ -111,6 +111,22 @@ func (s *SNetwork) GetAllocTimeoutSeconds() int {
 	return 300
 }
 
+func (s *SNetwork) Contains(ip string) bool {
+	start, err := netutils.NewIPV4Addr(s.GetIpStart())
+	if err != nil {
+		return false
+	}
+	end, err := netutils.NewIPV4Addr(s.GetIpEnd())
+	if err != nil {
+		return false
+	}
+	addr, err := netutils.NewIPV4Addr(ip)
+	if err != nil {
+		return false
+	}
+	return netutils.NewIPV4AddrRange(start, end).Contains(addr)
+}
+
 func (s *SWire) GetINetworkById(id string) (cloudprovider.ICloudNetwork, error) {
 	networks, err := s.vpc.region.GetNetworks(s.vpc.Id)
 	if err != nil {
