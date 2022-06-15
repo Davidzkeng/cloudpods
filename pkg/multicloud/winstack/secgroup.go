@@ -15,6 +15,7 @@
 package winstack
 
 import (
+	"fmt"
 	"strconv"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
@@ -22,7 +23,8 @@ import (
 )
 
 const (
-	SECURITY_GROUP_LIST = "api/network/securityGroups"
+	SECURITY_GROUP_LIST    = "api/network/securityGroups"
+	VM_SECURITY_GROUP_LIST = "/api/network/vpc/vms/%s/security-groups"
 )
 
 type SSecurityGroup struct {
@@ -165,4 +167,14 @@ func (s *SRegion) GetSecurityGroups(id, name string, start, size int) ([]SSecuri
 	var ret []SSecurityGroup
 
 	return ret, resp.Unmarshal(&ret, "data")
+}
+
+func (s *SRegion) GetSecurityByVmId(id string) ([]SSecurityGroup, error) {
+	URL := fmt.Sprintf(VM_SECURITY_GROUP_LIST, id)
+	resp, err := s.client.invokeGET(URL, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var ret []SSecurityGroup
+	return ret, resp.Unmarshal(&ret, "security_groups")
 }

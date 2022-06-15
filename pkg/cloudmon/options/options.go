@@ -55,7 +55,7 @@ type ReportOptions struct {
 	SinceTime string   `help:"sinceTime"`
 	EndTime   string   `help:"endTime"`
 	Provider  []string `help:"List objects from the provider" choices:"VMware|Aliyun|Qcloud|Azure|Aws|Huawei
-|ZStack|Google|Apsara|JDcloud|Ecloud|HCSO|BingoCloud" json:"provider,omitempty"`
+|ZStack|Google|Apsara|JDcloud|Ecloud|HCSO|BingoCloud|WinStack" json:"provider,omitempty"`
 	MetricInterval string `help:"metric interval eg:PT1M"`
 	PingProbeOptions
 }

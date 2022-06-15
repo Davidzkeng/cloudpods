@@ -16,6 +16,7 @@ package winstack
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
@@ -24,6 +25,7 @@ import (
 
 const (
 	INSTANCE_LIST_URL = "/api/compute/domains"
+	VNC_URL           = "/api/compute/domains/%s/noVNC/vnc"
 )
 
 type SInstance struct {
@@ -143,71 +145,80 @@ func (s *SInstance) GetMachine() string {
 }
 
 func (s *SInstance) GetInstanceType() string {
-	panic("implement me")
+	return fmt.Sprintf("ecs.g1.c%dm%d", s.GetVcpuCount(), s.GetVmemSizeMB()/1024)
 }
 
 func (s *SInstance) GetSecurityGroupIds() ([]string, error) {
-	panic("implement me")
+	securitys, err := s.host.cluster.region.GetSecurityByVmId(s.Id)
+	if err != nil {
+		return nil, err
+	}
+	var securityIds []string
+	for i := range securitys {
+		securityIds = append(securityIds, securitys[i].Id)
+	}
+	return securityIds, nil
 }
 
 func (s *SInstance) AssignSecurityGroup(secgroupId string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) SetSecurityGroups(secgroupIds []string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) GetHypervisor() string {
-	panic("implement me")
+	return api.HYPERVISOR_WINSTACK
 }
 
 func (s *SInstance) StartVM(ctx context.Context) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) StopVM(ctx context.Context, opts *cloudprovider.ServerStopOptions) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) DeleteVM(ctx context.Context) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) UpdateVM(ctx context.Context, name string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) UpdateUserData(userData string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) RebuildRoot(ctx context.Context, config *cloudprovider.SManagedVMRebuildRootConfig) (string, error) {
-	panic("implement me")
+	return "", cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) DeployVM(ctx context.Context, name string, username string, password string, publicKey string, deleteKeypair bool, description string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) ChangeConfig(ctx context.Context, config *cloudprovider.SManagedVMChangeConfig) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) GetVNCInfo(input *cloudprovider.ServerVncInput) (*cloudprovider.ServerVncOutput, error) {
-	panic("implement me")
+	return s.host.cluster.region.GetVNCURL(s.Id)
+
 }
 
 func (s *SInstance) AttachDisk(ctx context.Context, diskId string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) DetachDisk(ctx context.Context, diskId string) error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) GetError() error {
-	panic("implement me")
+	return nil
 }
 
 func (s *SInstance) GetId() string {
@@ -264,4 +275,16 @@ func (s *SRegion) GetInstances(id, hostId, clusterId string, start, size int) ([
 	}
 	var ret []SInstance
 	return ret, resp.Unmarshal(&ret, "data")
+}
+
+func (s *SRegion) GetVNCURL(id string) (*cloudprovider.ServerVncOutput, error) {
+	client := s.GetClient()
+	URL := client.endpoint + fmt.Sprintf(VNC_URL, id)
+	ret := &cloudprovider.ServerVncOutput{
+		Url:        URL,
+		Protocol:   "winstack",
+		InstanceId: id,
+		Hypervisor: api.HYPERVISOR_WINSTACK,
+	}
+	return ret, nil
 }

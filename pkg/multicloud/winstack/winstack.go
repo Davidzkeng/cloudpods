@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -40,6 +41,9 @@ const (
 var (
 	UnauthorizedError = errors.Errorf("Unauthorized")
 )
+
+var client *SWinStackClient
+var clientOnce sync.Once
 
 type ListOps struct {
 	Total int
@@ -87,16 +91,18 @@ type SWinStackClient struct {
 }
 
 func NewWinStackClient(cfg *WinStackConfig) (*SWinStackClient, error) {
-	client := &SWinStackClient{WinStackConfig: cfg, h: http.Header{}}
-	client.cli = client.getDefaultClient(0)
-	var err error
-	client.regions, err = client.GetRegions()
-	if err != nil {
-		return nil, err
-	}
-	for i := range client.regions {
-		client.regions[i].client = client
-	}
+	clientOnce.Do(func() {
+		client = &SWinStackClient{WinStackConfig: cfg, h: http.Header{}}
+		client.cli = client.getDefaultClient(0)
+		var err error
+		client.regions, err = client.GetRegions()
+		if err != nil {
+			return
+		}
+		for i := range client.regions {
+			client.regions[i].client = client
+		}
+	})
 	return client, nil
 }
 
@@ -219,7 +225,7 @@ func (client *SWinStackClient) invokePOST(path string, header map[string]string,
 }
 
 func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string, header map[string]string, query map[string]string, body interface{}) (jsonutils.JSONObject, error) {
-	if !client.skipRefreshSession(path) && (client.cli == nil || !client.checkSession()) {
+	if !client.skipRefreshSession(path) && !client.checkSession() {
 		err := client.refreshSession()
 		if err != nil {
 			return nil, err

@@ -63,3 +63,11 @@ func TestSRegion_GetInstanceNics(t *testing.T) {
 	}
 	t.Log(nics)
 }
+
+func TestSRegion_GetSecurityByVmId(t *testing.T) {
+	security, err := region.GetSecurityByVmId("a0804ee6-1921-426e-b770-b723e33ffa06")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(security)
+}

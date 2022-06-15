@@ -24,7 +24,6 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/multicloud/winstack"
 	"yunion.io/x/pkg/errors"
-	"yunion.io/x/pkg/util/regutils"
 )
 
 type SWinStackProviderFactory struct {
@@ -75,16 +74,11 @@ func (s *SWinStackProviderFactory) ValidateCreateCloudaccountData(ctx context.Co
 	if len(input.Password) == 0 {
 		return output, errors.Wrap(httperrors.ErrMissingParameter, "password")
 	}
-	if len(input.Host) == 0 {
-		return output, errors.Wrap(httperrors.ErrMissingParameter, "host")
+	if len(input.AuthUrl) == 0 {
+		return output, errors.Wrap(httperrors.ErrMissingParameter, "auth_url")
 	}
-	if !regutils.MatchIPAddr(input.Host) && !regutils.MatchDomainName(input.Host) {
-		return output, errors.Wrap(httperrors.ErrInputParameter, "host should be ip or domain name")
-	}
-	output.AccessUrl = fmt.Sprintf("https://%s:%d/", input.Host, input.Port)
-	if input.Port == 0 || input.Port == 443 {
-		output.AccessUrl = fmt.Sprintf("https://%s/", input.Host)
-	}
+
+	output.AccessUrl = input.AuthUrl
 	output.Account = input.Username
 	output.Secret = input.Password
 	return output, nil
@@ -103,6 +97,11 @@ func (s *SWinStackProviderFactory) ValidateUpdateCloudaccountCredential(ctx cont
 		Secret:  input.Password,
 	}
 	return output, nil
+}
+
+func init() {
+	factory := SWinStackProviderFactory{}
+	cloudprovider.RegisterFactory(&factory)
 }
 
 type SWinStackProvider struct {
