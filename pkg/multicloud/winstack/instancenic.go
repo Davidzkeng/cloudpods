@@ -16,6 +16,7 @@ package winstack
 
 import (
 	"fmt"
+	"log"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 )
 
@@ -65,6 +66,9 @@ func (s *SInstanceNic) GetMAC() string {
 }
 
 func (s *SInstanceNic) InClassicNetwork() bool {
+	if s.NetworkType == 0 {
+		return true
+	}
 	return false
 }
 
@@ -112,5 +116,6 @@ func (s *SRegion) GetInstanceNics(instanceId string) ([]SInstanceNic, error) {
 		return nil, err
 	}
 	var ret []SInstanceNic
+	log.Printf("GetInstanceNics:%v", resp.String())
 	return ret, resp.Unmarshal(&ret, "bridgeInterfaces")
 }

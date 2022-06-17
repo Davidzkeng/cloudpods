@@ -34,6 +34,7 @@ type SNetwork struct {
 	multicloud.STagBase
 	wire *SWire
 
+	Id       string
 	SubNetId string
 	Name     string
 	Cidr     string
@@ -42,18 +43,18 @@ type SNetwork struct {
 }
 
 func (s *SNetwork) GetId() string {
-	return s.SubNetId
+	return s.Id
 }
 
 func (s *SNetwork) GetName() string {
 	if len(s.Name) > 0 {
 		return s.Name
 	}
-	return s.SubNetId
+	return s.Id
 }
 
 func (s *SNetwork) GetGlobalId() string {
-	return s.SubNetId
+	return s.Id
 }
 
 func (s *SNetwork) GetStatus() string {
@@ -147,6 +148,7 @@ func (s *SWire) GetINetworks() ([]cloudprovider.ICloudNetwork, error) {
 	}
 	var ret []cloudprovider.ICloudNetwork
 	for i := range networks {
+		networks[i].wire = s
 		ret = append(ret, &networks[i])
 	}
 	return ret, err
@@ -159,5 +161,5 @@ func (s *SRegion) GetNetworks(vpcId string) ([]SNetwork, error) {
 		return nil, err
 	}
 	var networks []SNetwork
-	return networks, resp.Unmarshal(&networks, "data")
+	return networks, resp.Unmarshal(&networks)
 }

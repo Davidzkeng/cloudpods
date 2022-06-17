@@ -911,7 +911,9 @@ func syncHostVMs(ctx context.Context, userCred mcclient.TokenCredential, syncRes
 
 	// db.OpsLog.LogEvent(provider, db.ACT_SYNC_HOST_COMPLETE, msg, userCred)
 	// logclient.AddActionLog(provider, getAction(task.Params), notes, task.UserCred, true)
+	log.Printf("ttttttt,syncVMPairs:%v", syncVMPairs)
 	for i := 0; i < len(syncVMPairs); i += 1 {
+		log.Printf("ttttttt:%v,syncRange:%v", syncVMPairs[i].IsNew, syncRange.DeepSync)
 		if !syncVMPairs[i].IsNew && !syncRange.DeepSync {
 			continue
 		}
@@ -922,7 +924,7 @@ func syncHostVMs(ctx context.Context, userCred mcclient.TokenCredential, syncRes
 			if syncVMPairs[i].Local.Deleted || syncVMPairs[i].Local.PendingDeleted {
 				return
 			}
-
+			log.Printf("ttttttt,into syncVMPeripherals")
 			syncVMPeripherals(ctx, userCred, syncVMPairs[i].Local, syncVMPairs[i].Remote, localHost, provider, driver)
 		}()
 	}

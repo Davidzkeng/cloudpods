@@ -16,14 +16,16 @@ package winstack
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
+	"yunion.io/x/pkg/util/secrules"
 )
 
 const (
-	SECURITY_GROUP_LIST    = "api/network/securityGroups"
+	SECURITY_GROUP_LIST    = "/api/sdn/v2.0/security-groups"
 	VM_SECURITY_GROUP_LIST = "/api/network/vpc/vms/%s/security-groups"
 )
 
@@ -32,9 +34,21 @@ type SSecurityGroup struct {
 	multicloud.WinStackTags
 	region *SRegion
 
-	Id     string
-	Name   string
-	Remark string
+	Id                 string
+	Name               string
+	Description        string
+	SecurityGroupRules []struct {
+		Direction       string `json:"direction"`
+		Ethertype       string `json:"ethertype"`
+		Id              string `json:"id"`
+		RemoteGroupId   string `json:"remote_group_id"`
+		SecurityGroupId string `json:"security_group_id"`
+		Priority        int    `json:"priority"`
+		Protocol        string `json:"protocol"`
+		PortRangeMax    string `json:"port_range_max"`
+		PortRangeMin    string `json:"port_range_min"`
+		RemoteIpPrefix  string `json:"remote_ip_prefix"`
+	}
 }
 
 func (s *SSecurityGroup) GetProjectId() string {
@@ -42,11 +56,49 @@ func (s *SSecurityGroup) GetProjectId() string {
 }
 
 func (s *SSecurityGroup) GetDescription() string {
-	return s.Remark
+	return s.Description
 }
 
 func (s *SSecurityGroup) GetRules() ([]cloudprovider.SecurityRule, error) {
-	panic("implement me")
+	var ret []cloudprovider.SecurityRule
+	for _, _rule := range s.SecurityGroupRules {
+		rule := cloudprovider.SecurityRule{}
+		rule.Direction = secrules.DIR_IN
+		rule.Priority = 1
+		rule.Action = secrules.SecurityRuleAllow
+		rule.Protocol = secrules.PROTO_ANY
+		rule.Description = s.Description
+		if _rule.Direction == "egress" {
+			rule.Direction = secrules.DIR_OUT
+		}
+
+		if _rule.Protocol != "" {
+			rule.Protocol = _rule.Protocol
+		}
+		if rule.Protocol == secrules.PROTO_TCP || rule.Protocol == secrules.PROTO_UDP {
+			re := regexp.MustCompile("[0-9]+")
+			var portMax, portMin int
+			if res := re.FindAllString(_rule.PortRangeMax, -1); len(res) > 0 {
+				portMax, _ = strconv.Atoi(res[0])
+			}
+			if res := re.FindAllString(_rule.PortRangeMin, -1); len(res) > 0 {
+				portMin, _ = strconv.Atoi(res[0])
+			}
+			rule.PortStart, rule.PortEnd = portMin, portMax
+		}
+		if _rule.RemoteIpPrefix != "" {
+			if _rule.RemoteIpPrefix == "::/0" {
+				_rule.RemoteIpPrefix = "0.0.0.0/0"
+			}
+			rule.ParseCIDR(_rule.RemoteIpPrefix)
+			err := rule.ValidateRule()
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, rule)
+		}
+	}
+	return ret, nil
 }
 
 func (s *SSecurityGroup) GetVpcId() string {
@@ -125,7 +177,7 @@ func (s *SRegion) getSecurityGroupsByName(name string) (*SSecurityGroup, error) 
 
 func (s *SRegion) getSecurityGroups() ([]SSecurityGroup, error) {
 	var securityGroups []SSecurityGroup
-	start, size := 0, 10
+	start, size := 1, 10
 	for {
 		ret, err := s.GetSecurityGroups("", "", start, size)
 		if err != nil {
@@ -137,7 +189,7 @@ func (s *SRegion) getSecurityGroups() ([]SSecurityGroup, error) {
 		if len(ret) < size {
 			break
 		}
-		start += size
+		start += 1
 	}
 	return securityGroups, nil
 }
@@ -166,7 +218,7 @@ func (s *SRegion) GetSecurityGroups(id, name string, start, size int) ([]SSecuri
 	}
 	var ret []SSecurityGroup
 
-	return ret, resp.Unmarshal(&ret, "data")
+	return ret, resp.Unmarshal(&ret, "security_groups")
 }
 
 func (s *SRegion) GetSecurityByVmId(id string) ([]SSecurityGroup, error) {

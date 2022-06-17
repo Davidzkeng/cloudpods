@@ -57,7 +57,7 @@ func TestSRegion_GetInstances(t *testing.T) {
 }
 
 func TestSRegion_GetInstanceNics(t *testing.T) {
-	nics, err := region.GetInstanceNics("7593234e-2065-40eb-9544-b887c9eb7645")
+	nics, err := region.GetInstanceNics("f86d0a33-067d-4640-b74d-5ebb17b9b429")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,4 +70,20 @@ func TestSRegion_GetSecurityByVmId(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(security)
+}
+
+func TestSRegion_GetInstancesByHostId(t *testing.T) {
+	instances, err := region.GetInstancesByHostId("c90dfc02-32a0-48d4-84a6-2c261434167a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(instances)
+}
+
+func TestSRegion_GetStorages(t *testing.T) {
+	storages, err := region.getStorages()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(storages))
 }

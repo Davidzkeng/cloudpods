@@ -32,37 +32,63 @@ type SHost struct {
 
 	cluster *SCluster
 
-	Id          string
-	Name        string
-	ClusterId   string
-	CpuCores    int
-	IsConnected bool
-	IsMaintain  bool
+	Id           string
+	Name         string
+	ClusterId    string
+	CpuCores     int
+	IsConnected  bool
+	IsMaintain   bool
+	Ip           string
+	CpuSockets   int8
+	CpuModelName string
+	Memory       int64
+	HMemory      string
+	Storage      int64
 }
 
 func (s *SHost) GetIVMs() ([]cloudprovider.ICloudVM, error) {
-	//vms := []SInstance{}
-	return nil, nil
+	var ret []cloudprovider.ICloudVM
+	instances, err := s.cluster.region.GetInstancesByHostId(s.Id)
+	if err != nil {
+		return nil, err
+	}
+	for i := range instances {
+		instances[i].host = s
+		ret = append(ret, &instances[i])
+
+	}
+	return ret, nil
 }
 
 func (s *SHost) GetIVMById(id string) (cloudprovider.ICloudVM, error) {
-	panic("implement me")
+	instance, err := s.cluster.region.GetInstancesByHostId(s.Id)
+	if err != nil {
+		return nil, err
+	}
+	for i := range instance {
+		if instance[i].GetGlobalId() == id {
+			instance[i].host = s
+			return &instance[i], nil
+		}
+	}
+	return nil, cloudprovider.ErrNotFound
+
 }
 
 func (s *SHost) GetIWires() ([]cloudprovider.ICloudWire, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SHost) GetIStorages() ([]cloudprovider.ICloudStorage, error) {
-	panic("implement me")
+	return s.cluster.GetIStorages()
 }
 
 func (s *SHost) GetIStorageById(id string) (cloudprovider.ICloudStorage, error) {
-	panic("implement me")
+	return s.cluster.GetIStorageById(id)
 }
 
 func (s *SHost) GetEnabled() bool {
-	panic("implement me")
+	return true
 }
 
 func (s *SHost) GetHostStatus() string {
@@ -73,31 +99,31 @@ func (s *SHost) GetHostStatus() string {
 }
 
 func (s *SHost) GetAccessIp() string {
-	panic("implement me")
+	return s.Ip
 }
 
 func (s *SHost) GetAccessMac() string {
-	panic("implement me")
+	return ""
 }
 
 func (s *SHost) GetSysInfo() jsonutils.JSONObject {
-	panic("implement me")
+	return jsonutils.NewDict()
 }
 
 func (s *SHost) GetSN() string {
-	panic("implement me")
+	return ""
 }
 
 func (s *SHost) GetCpuCount() int {
-	panic("implement me")
+	return s.CpuCores
 }
 
 func (s *SHost) GetNodeCount() int8 {
-	panic("implement me")
+	return s.CpuSockets
 }
 
 func (s *SHost) GetCpuDesc() string {
-	panic("implement me")
+	return s.CpuModelName
 }
 
 func (s *SHost) GetCpuMhz() int {
@@ -105,15 +131,15 @@ func (s *SHost) GetCpuMhz() int {
 }
 
 func (s *SHost) GetMemSizeMB() int {
-	panic("implement me")
+	return int(s.Memory / 1024 / 1024)
 }
 
 func (s *SHost) GetStorageSizeMB() int {
-	panic("implement me")
+	return int(s.Storage / 1024 / 1024)
 }
 
 func (s *SHost) GetStorageType() string {
-	panic("implement me")
+	return api.STORAGE_LOCAL_SSD
 }
 
 func (s *SHost) GetHostType() string {
@@ -129,11 +155,11 @@ func (s *SHost) GetVersion() string {
 }
 
 func (s *SHost) CreateVM(desc *cloudprovider.SManagedVMCreateConfig) (cloudprovider.ICloudVM, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SHost) GetIHostNics() ([]cloudprovider.ICloudHostNetInterface, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotSupported
 }
 
 func (s *SHost) GetId() string {
@@ -178,7 +204,7 @@ func (s *SRegion) GetHosts(clusterId, hostId string, start, size int) ([]SHost, 
 
 func (s *SRegion) getHosts(clusterId, hostId string) ([]SHost, error) {
 	var ret []SHost
-	start, size := 0, 10
+	start, size := 1, 10
 	for {
 		hosts, err := s.GetHosts(clusterId, hostId, start, size)
 		if err != nil {
@@ -190,7 +216,7 @@ func (s *SRegion) getHosts(clusterId, hostId string) ([]SHost, error) {
 		if len(hosts) < size {
 			break
 		}
-		start += size
+		start += 1
 	}
 	return ret, nil
 }

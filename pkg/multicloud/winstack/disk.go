@@ -93,7 +93,7 @@ func (s *SDisk) GetCacheMode() string {
 }
 
 func (s *SDisk) GetMountpoint() string {
-	panic("implement me")
+	return ""
 }
 
 func (s *SDisk) GetAccessPath() string {
@@ -182,7 +182,7 @@ func (s *SStorage) getDisk(id string) (*SDisk, error) {
 
 func (s *SStorage) getDisks() ([]SDisk, error) {
 	var disks []SDisk
-	start, size := 0, 10
+	start, size := 1, 10
 	for {
 		ret, err := s.GetDisks("", start, size)
 		if err != nil {
@@ -194,7 +194,7 @@ func (s *SStorage) getDisks() ([]SDisk, error) {
 		if len(ret) < size {
 			break
 		}
-		start += size
+		start += 1
 	}
 	return disks, nil
 }

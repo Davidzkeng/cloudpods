@@ -43,7 +43,7 @@ func (s *SWire) GetBandwidth() int {
 }
 
 func (s *SWire) CreateINetwork(opts *cloudprovider.SNetworkCreateOptions) (cloudprovider.ICloudNetwork, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SWire) GetId() string {

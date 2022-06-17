@@ -59,15 +59,15 @@ func (s *SVpc) GetISecurityGroups() ([]cloudprovider.ICloudSecurityGroup, error)
 }
 
 func (s *SVpc) GetIRouteTables() ([]cloudprovider.ICloudRouteTable, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SVpc) GetIRouteTableById(routeTableId string) (cloudprovider.ICloudRouteTable, error) {
-	panic("implement me")
+	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SVpc) Delete() error {
-	panic("implement me")
+	return cloudprovider.ErrNotImplemented
 }
 
 func (s *SVpc) GetId() string {
@@ -110,4 +110,36 @@ func (s *SRegion) GetVpcs(id string, start, size int) ([]SVpc, error) {
 	}
 	var vpcs []SVpc
 	return vpcs, resp.Unmarshal(&vpcs, "data")
+}
+
+func (s *SRegion) GetIVpcs() ([]cloudprovider.ICloudVpc, error) {
+	vpcs, err := s.getVpcs()
+	if err != nil {
+		return nil, err
+	}
+	var ret []cloudprovider.ICloudVpc
+	for i := range vpcs {
+		vpcs[i].region = s
+		ret = append(ret, &vpcs[i])
+	}
+	return ret, nil
+}
+
+func (s *SRegion) getVpcs() ([]SVpc, error) {
+	var vpcs []SVpc
+	start, size := 1, 10
+	for {
+		ret, err := s.GetVpcs("", start, size)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret {
+			vpcs = append(vpcs, ret[i])
+		}
+		if len(ret) < size {
+			break
+		}
+		start += 1
+	}
+	return vpcs, nil
 }

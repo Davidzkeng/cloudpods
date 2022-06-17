@@ -80,6 +80,7 @@ func (s *SInstance) GetIDisks() ([]cloudprovider.ICloudDisk, error) {
 		if err != nil {
 			return nil, err
 		}
+		storage.cluster = s.host.cluster
 		disk, err := storage.GetIDiskById(s.DomainDiskDbRspList[i].VolId)
 		if err != nil {
 			return nil, err
@@ -247,6 +248,44 @@ func (s *SInstance) GetStatus() string {
 	default:
 		return api.VM_UNKNOWN
 	}
+}
+
+func (s *SRegion) GetInstancesByHostId(hostId string) ([]SInstance, error) {
+	var instances []SInstance
+	start, size := 1, 10
+	for {
+		ret, err := s.GetInstances("", hostId, "", start, size)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret {
+			instances = append(instances, ret[i])
+		}
+		if len(ret) < size {
+			break
+		}
+		start += 1
+	}
+	return instances, nil
+}
+
+func (s *SRegion) GetInstancesByClusterId(clusterId string) ([]SInstance, error) {
+	var instances []SInstance
+	start, size := 1, 10
+	for {
+		ret, err := s.GetInstances("", clusterId, "", start, size)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret {
+			instances = append(instances, ret[i])
+		}
+		if len(ret) < size {
+			break
+		}
+		start += 1
+	}
+	return instances, nil
 }
 
 func (s *SRegion) GetInstances(id, hostId, clusterId string, start, size int) ([]SInstance, error) {

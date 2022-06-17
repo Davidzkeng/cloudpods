@@ -2426,6 +2426,7 @@ func (self *SHost) SyncHostVMs(ctx context.Context, userCred mcclient.TokenCrede
 		syncResult.Error(errors.Wrapf(err, "GetGuests"))
 		return nil, syncResult
 	}
+	log.Printf("tttttt,sync vms:hostId:%v,dbVMS:%v", self.Id, dbVMs, vms)
 
 	for i := range dbVMs {
 		if taskman.TaskManager.IsInTask(&dbVMs[i]) {
@@ -2444,6 +2445,7 @@ func (self *SHost) SyncHostVMs(ctx context.Context, userCred mcclient.TokenCrede
 		syncResult.Error(err)
 		return nil, syncResult
 	}
+	log.Println("tttttt1,host:", self.Id, dbVMs, vms, &removed, &commondb, &commonext, &added)
 
 	skipFunc := func(ext cloudprovider.ICloudVM) (bool, string) {
 		if len(options.Options.SkipServerBySysTagKeys) == 0 {

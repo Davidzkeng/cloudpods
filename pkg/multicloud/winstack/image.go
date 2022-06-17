@@ -22,6 +22,7 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
 	"yunion.io/x/onecloud/pkg/util/rbacutils"
+	"yunion.io/x/pkg/errors"
 )
 
 const (
@@ -176,4 +177,52 @@ func (s *SRegion) GetImages(id string, start, size int) ([]SImage, error) {
 	}
 	var ret []SImage
 	return ret, resp.Unmarshal(&ret, "data")
+}
+
+func (s *SRegion) getImages() ([]SImage, error) {
+	var images []SImage
+	start, size := 1, 10
+	for {
+		ret, err := s.GetImages("", start, size)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret {
+			images = append(images, ret[i])
+		}
+		if len(ret) < size {
+			break
+		}
+		start += 1
+	}
+	return images, nil
+}
+
+func (s *SStoragecache) GetICloudImages() ([]cloudprovider.ICloudImage, error) {
+	images, err := s.region.getImages()
+	if err != nil {
+		return nil, err
+	}
+	var ret []cloudprovider.ICloudImage
+	for i := range images {
+		if images[i].StorageId == s.storageId {
+			images[i].cache = s
+			ret = append(ret, &images[i])
+		}
+	}
+	return ret, nil
+}
+
+func (s *SStoragecache) GetIImageById(id string) (cloudprovider.ICloudImage, error) {
+	images, err := s.region.getImages()
+	if err != nil {
+		return nil, err
+	}
+	for i := range images {
+		if images[i].GetGlobalId() == id {
+			images[i].cache = s
+			return &images[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
 }

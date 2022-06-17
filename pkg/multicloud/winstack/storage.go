@@ -189,7 +189,7 @@ func (s *SRegion) GetStorages(id string, start, size int) ([]SStorage, error) {
 
 func (s *SRegion) getStorages() ([]SStorage, error) {
 	var ret []SStorage
-	start, size := 0, 10
+	start, size := 1, 10
 	for {
 		storages, err := s.GetStorages("", start, size)
 		if err != nil {
@@ -201,7 +201,7 @@ func (s *SRegion) getStorages() ([]SStorage, error) {
 		if len(storages) < size {
 			break
 		}
-		start += size
+		start += 1
 	}
 	return ret, nil
 }

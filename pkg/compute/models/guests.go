@@ -3204,7 +3204,6 @@ func (self *SGuest) SyncVMNics(ctx context.Context, userCred mcclient.TokenCrede
 		}
 		result.Delete()
 	}
-
 	for i := 0; i < len(commondb); i += 1 {
 		err := NetworkAddressManager.syncGuestnetworkICloudNic(ctx, userCred, &commondb[i], commonext[i])
 		if err != nil {

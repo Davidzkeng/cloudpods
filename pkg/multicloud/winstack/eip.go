@@ -152,7 +152,7 @@ func (s *SRegion) GetIEipById(eipId string) (cloudprovider.ICloudEIP, error) {
 
 func (s *SRegion) getEips() ([]SEip, error) {
 	var eips []SEip
-	start, size := 0, 10
+	start, size := 1, 10
 	for {
 		ret, err := s.GetEips("", start, size)
 		if err != nil {
@@ -164,7 +164,7 @@ func (s *SRegion) getEips() ([]SEip, error) {
 		if len(ret) < size {
 			break
 		}
-		start += size
+		start += 1
 	}
 	return eips, nil
 }

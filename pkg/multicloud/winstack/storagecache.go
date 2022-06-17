@@ -32,14 +32,6 @@ type SStoragecache struct {
 	storageName string
 }
 
-func (s *SStoragecache) GetICloudImages() ([]cloudprovider.ICloudImage, error) {
-	panic("implement me")
-}
-
-func (s *SStoragecache) GetIImageById(extId string) (cloudprovider.ICloudImage, error) {
-	panic("implement me")
-}
-
 func (s *SStoragecache) GetId() string {
 	return fmt.Sprintf("%s-%s", s.region.GetGlobalId(), s.storageId)
 }

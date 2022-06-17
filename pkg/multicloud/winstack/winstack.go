@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	UnauthorizedError = errors.Errorf("Unauthorized")
+	UnauthorizedError = errors.Errorf("WinStack Unauthorized")
 )
 
 var client *SWinStackClient
@@ -192,7 +192,7 @@ func (client *SWinStackClient) refreshSession() error {
 	}
 	if resp.Contains("sessionId") {
 		sessionId, _ := resp.GetString("sessionId")
-		client.h.Add("Cookie", "SESSION="+sessionId)
+		client.h.Set("Cookie", "SESSION="+sessionId)
 	}
 	return nil
 }
@@ -226,6 +226,7 @@ func (client *SWinStackClient) invokePOST(path string, header map[string]string,
 
 func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string, header map[string]string, query map[string]string, body interface{}) (jsonutils.JSONObject, error) {
 	if !client.skipRefreshSession(path) && !client.checkSession() {
+		log.Printf("path:%s,checkSession:%v", path, client.checkSession())
 		err := client.refreshSession()
 		if err != nil {
 			return nil, err
@@ -258,6 +259,7 @@ func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
+		log.Printf("session:%v", client.h.Get("Cookie"))
 		return nil, UnauthorizedError
 	}
 	data, err := ioutil.ReadAll(resp.Body)
@@ -265,6 +267,9 @@ func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string,
 		return nil, err
 	}
 
+	if len(data) <= 0 {
+		return nil, nil
+	}
 	obj, err := jsonutils.Parse(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, "jsonutils.Parse")

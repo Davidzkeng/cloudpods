@@ -42,6 +42,7 @@ func (s *SCluster) GetIHosts() ([]cloudprovider.ICloudHost, error) {
 	}
 	var ret []cloudprovider.ICloudHost
 	for i := range hosts {
+		hosts[i].cluster = s
 		ret = append(ret, &hosts[i])
 	}
 	return ret, nil
@@ -115,6 +116,6 @@ func (s *SRegion) GetClusters() ([]SCluster, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := []SCluster{}
+	var ret []SCluster
 	return ret, resp.Unmarshal(&ret, "data")
 }
