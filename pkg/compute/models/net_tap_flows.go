@@ -191,6 +191,7 @@ func (manager *SNetTapFlowManager) FetchCustomizeColumns(
 		}
 		flow := objs[i].(*SNetTapFlow)
 		tapIds[i] = flow.TapId
+		rows[i] = flow.getMoreDetails(ctx, rows[i])
 	}
 	tapIdMap, err := db.FetchIdNameMap2(NetTapServiceManager, tapIds)
 	if err != nil {
@@ -244,7 +245,8 @@ func (manager *SNetTapFlowManager) ValidateCreateData(
 			return input, errors.Wrap(err, "NetTapServiceManager.FetchByIdOrName")
 		}
 	}
-	input.TapId = tapObj.GetId()
+	tap := tapObj.(*SNetTapService)
+	input.TapId = tap.Id
 	switch input.Type {
 	case api.TapFlowVSwitch:
 		hostObj, err := HostManager.FetchByIdOrName(userCred, input.HostId)
@@ -286,8 +288,8 @@ func (manager *SNetTapFlowManager) ValidateCreateData(
 		input.SourceId = host.Id
 		input.MacAddr = ""
 		input.NetId = wire.Id
-		if input.VlanId <= 0 || input.VlanId > 4095 {
-			return input, errors.Wrapf(httperrors.ErrInputParameter, "invalid vlan id %d", input.VlanId)
+		if input.VlanId != nil && (*input.VlanId <= 0 || *input.VlanId > 4095) {
+			return input, errors.Wrapf(httperrors.ErrInputParameter, "invalid vlan id %d", *input.VlanId)
 		}
 	case api.TapFlowGuestNic:
 		guestObj, err := GuestManager.FetchByIdOrName(userCred, input.GuestId)
@@ -327,15 +329,31 @@ func (manager *SNetTapFlowManager) ValidateCreateData(
 		input.SourceId = guest.Id
 		input.MacAddr = gn.MacAddr
 		input.NetId = gn.NetworkId
-		input.VlanId = 0
+		input.VlanId = nil
+		// check loop
+		if tap.Type == api.TapServiceGuest && tap.TargetId == input.SourceId {
+			return input, errors.Wrap(httperrors.ErrInputParameter, "cannot tap trafic from guest itself")
+		}
 	default:
 		return input, errors.Wrapf(httperrors.ErrInputParameter, "invalid flow type %s", input.Type)
+	}
+	// check duplicity
+	dupCnt, err := manager.Query().Equals("tap_id", tap.Id).Equals("type", input.Type).Equals("source_id", input.SourceId).Equals("net_id", input.NetId).CountWithError()
+	if err != nil {
+		return input, errors.Wrap(err, "query duplicity")
+	}
+	if dupCnt > 0 {
+		return input, errors.Wrap(httperrors.ErrConflict, "this source has been added")
 	}
 	if len(input.Direction) == 0 {
 		input.Direction = api.TapFlowDirectionBoth
 	}
 	if !utils.IsInStringArray(input.Direction, api.TapFlowDirections) {
 		return input, errors.Wrapf(httperrors.ErrNotSupported, "unsupported direction %s", input.Direction)
+	}
+	if input.Enabled == nil {
+		trueVal := true
+		input.Enabled = &trueVal
 	}
 	return input, nil
 }
