@@ -12,23 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baremetal
+package shell
 
 import (
-	"context"
-
-	"yunion.io/x/onecloud/pkg/scheduler/algorithm/predicates"
-	"yunion.io/x/onecloud/pkg/scheduler/core"
-	o "yunion.io/x/onecloud/pkg/scheduler/options"
+	"yunion.io/x/onecloud/pkg/multicloud/aliyun"
+	"yunion.io/x/onecloud/pkg/util/shellutils"
 )
 
-type BasePredicate struct {
-	predicates.BasePredicate
-}
-
-func (p *BasePredicate) PreExecute(ctx context.Context, u *core.Unit, cs []core.Candidater) (bool, error) {
-	if o.Options.DisableBaremetalPredicates {
-		return false, nil
+func init() {
+	type TableStoreListOptions struct {
+		PageSize   int `help:"page size" default:"10"`
+		PageNumber int `help:"page number" default:"1"`
 	}
-	return true, nil
+	shellutils.R(&TableStoreListOptions{}, "tablestore-list", "List tablestores", func(cli *aliyun.SRegion, args *TableStoreListOptions) error {
+		ret, total, err := cli.GetTablestoreInstances(args.PageSize, args.PageNumber)
+		if err != nil {
+			return err
+		}
+		printList(ret, total, 0, 0, []string{})
+		return nil
+	})
 }

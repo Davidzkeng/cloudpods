@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baremetal
+package compute
 
 import (
-	"context"
+	"yunion.io/x/jsonutils"
 
-	"yunion.io/x/onecloud/pkg/scheduler/algorithm/predicates"
-	"yunion.io/x/onecloud/pkg/scheduler/core"
-	o "yunion.io/x/onecloud/pkg/scheduler/options"
+	"yunion.io/x/onecloud/pkg/mcclient/options"
 )
 
-type BasePredicate struct {
-	predicates.BasePredicate
+type TablestoreListOptions struct {
+	options.BaseListOptions
 }
 
-func (p *BasePredicate) PreExecute(ctx context.Context, u *core.Unit, cs []core.Candidater) (bool, error) {
-	if o.Options.DisableBaremetalPredicates {
-		return false, nil
-	}
-	return true, nil
+func (opts *TablestoreListOptions) Params() (jsonutils.JSONObject, error) {
+	return options.ListStructToParams(opts)
 }

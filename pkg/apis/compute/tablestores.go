@@ -12,23 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package baremetal
+package compute
 
-import (
-	"context"
+import "yunion.io/x/onecloud/pkg/apis"
 
-	"yunion.io/x/onecloud/pkg/scheduler/algorithm/predicates"
-	"yunion.io/x/onecloud/pkg/scheduler/core"
-	o "yunion.io/x/onecloud/pkg/scheduler/options"
+const (
+	TABLESTORE_STATUS_RUNNING = "running"
+	TABLESTORE_STATUS_UNKNOWN = "unknown"
 )
 
-type BasePredicate struct {
-	predicates.BasePredicate
+type TablestoreCreateInput struct {
+	apis.VirtualResourceCreateInput
 }
 
-func (p *BasePredicate) PreExecute(ctx context.Context, u *core.Unit, cs []core.Candidater) (bool, error) {
-	if o.Options.DisableBaremetalPredicates {
-		return false, nil
-	}
-	return true, nil
+type TablestoreUpdateInput struct {
+	apis.VirtualResourceBaseUpdateInput
+}
+
+type TablestoreListInput struct {
+	apis.VirtualResourceListInput
+	apis.ExternalizedResourceBaseListInput
+	RegionalFilterListInput
+	ManagedResourceListInput
+}
+
+type TablestoreDetails struct {
+	apis.VirtualResourceDetails
+	CloudregionResourceInfo
+	ManagedResourceInfo
 }
