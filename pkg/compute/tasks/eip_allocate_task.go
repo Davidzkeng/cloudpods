@@ -120,6 +120,16 @@ func (self *EipAllocateTask) OnInit(ctx context.Context, obj db.IStandaloneModel
 		args.NetworkExternalId = network.ExternalId
 	}
 
+	if eip.Vpc != "" {
+		_vpc, err := models.VpcManager.FetchById(eip.Vpc)
+		if err != nil {
+			self.onFailed(ctx, eip, errors.Wrapf(err, "VpcManager.FetchById(%s)", eip.Vpc))
+			return
+		}
+		vpc := _vpc.(*models.SVpc)
+		args.VpcExternalId = vpc.ExternalId
+	}
+
 	if eipIsManaged {
 		var err error
 

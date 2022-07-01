@@ -88,6 +88,10 @@ func (self *SClassicEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SClassicEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (self *SClassicEipAddress) GetGlobalId() string {
 	return strings.ToLower(self.ID)
 }

@@ -74,6 +74,10 @@ func (self *SEip) GetINetworkId() string {
 	return self.NetworkId
 }
 
+func (self *SEip) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEip) GetAssociationType() string {
 	return self.AssociateType
 }

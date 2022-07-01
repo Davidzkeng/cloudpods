@@ -145,6 +145,10 @@ func (eip *SEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (eip *SEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (eip *SEipAddress) GetInternetChargeType() string {
 	return api.EIP_CHARGE_TYPE_BY_TRAFFIC
 }

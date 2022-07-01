@@ -28,7 +28,7 @@ func init() {
 		NextToken string
 	}
 	shellutils.R(&InstanceListOptions{}, "instance-list", "list instances", func(cli *winstack.SRegion, args *InstanceListOptions) error {
-		vms, err := cli.GetInstances(args.Id, args.NodeId, args.ClusterId, 0, 10)
+		vms, err := cli.GetInstances(args.Id, args.NodeId, args.ClusterId, "", 0, 10)
 		if err != nil {
 			return err
 		}

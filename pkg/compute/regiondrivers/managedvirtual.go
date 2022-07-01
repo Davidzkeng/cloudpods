@@ -1231,6 +1231,7 @@ func (self *SManagedVirtualizationRegionDriver) RequestCreateVpc(ctx context.Con
 			return nil, errors.Wrap(err, "cloudprovider.WaitStatus")
 		}
 
+		//todo: 云宏外部网络
 		if ivpc.IsSupportSetExternalAccess() && vpc.ExternalAccessMode == api.VPC_EXTERNAL_ACCESS_MODE_EIP {
 			igw, err := iregion.CreateInternetGateway()
 			if err != nil {
@@ -1552,7 +1553,6 @@ func (self *SManagedVirtualizationRegionDriver) RequestSyncSecurityGroup(ctx con
 	if err != nil {
 		return "", errors.Wrap(err, "SSecurityGroupCache.Register")
 	}
-
 	return cache.ExternalId, cache.SyncRules(ctx)
 }
 
@@ -3156,9 +3156,13 @@ func (self *SManagedVirtualizationRegionDriver) RequestCreateNetwork(ctx context
 	}
 
 	opts := cloudprovider.SNetworkCreateOptions{
-		Name: net.Name,
-		Cidr: prefix.String(),
-		Desc: net.Description,
+		Name:           net.Name,
+		Cidr:           prefix.String(),
+		Desc:           net.Description,
+		IpStart:        net.GuestIpStart,
+		IpEnd:          net.GuestIpEnd,
+		VlanId:         net.VlanId,
+		DefaultGateway: net.GuestGateway,
 	}
 
 	provider := wire.GetCloudprovider()

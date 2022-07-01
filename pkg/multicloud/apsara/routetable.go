@@ -239,6 +239,10 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
+func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+	return cloudprovider.ErrNotSupported
+}
+
 func (self *SRouteTable) RemoteGetRoutes(offset int, limit int) ([]*SRouteEntry, int, error) {
 	if limit > 50 || limit <= 0 {
 		limit = 50

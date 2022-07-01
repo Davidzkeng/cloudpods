@@ -130,6 +130,10 @@ func (self *SEip) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEip) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEip) GetAssociationType() string {
 	orders, err := self.region.GetOrder(self.WorkOrderResourceID)
 	if err != nil {

@@ -161,6 +161,10 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return nil
 }
 
+func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+	return cloudprovider.ErrNotSupported
+}
+
 func (self *SRouteTable) GetIRoutes() ([]cloudprovider.ICloudRoute, error) {
 	iroutes := make([]cloudprovider.ICloudRoute, len(self.Routes))
 	for i := range self.Routes {

@@ -18,14 +18,23 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
+	"yunion.io/x/jsonutils"
+	"yunion.io/x/onecloud/pkg/apis"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
+	"yunion.io/x/pkg/errors"
 )
 
 const (
-	INSTANCE_LIST_URL = "/api/compute/domains"
-	VNC_URL           = "/api/compute/domains/%s/noVNC/vnc"
+	INSTANCE_LIST_URL     = "/api/compute/domains"
+	VNC_URL               = "/api/compute/domains/%s/noVNC/vnc"
+	INSTANCE_SHUTDOWN_URL = "/api/compute/domains/%s/act/shutdown"
+	INSTANCE_START_URL    = "/api/compute/domains/%s/act/start"
+	INSTANCE_DELETE_URL   = "/api/compute/domains/%s/2"
+	INSTANCE_DETAIL_URL   = "/api/compute/domains/%s"
+	VPC_INSTANCE_LIST_URL = "/api/compute/domainVpc/%s"
 )
 
 type SInstance struct {
@@ -73,6 +82,25 @@ func (s *SInstance) GetIHost() cloudprovider.ICloudHost {
 	return s.host
 }
 
+func (s *SInstance) GetOSArch() string {
+	detail, err := s.host.cluster.region.GetInstanceDetailById(s.Id)
+	if err != nil {
+		return ""
+	}
+	switch detail.Cpu.Arch {
+	case 1:
+		return apis.OS_ARCH_X86
+	case 2:
+		return apis.OS_ARCH_X86_64
+	case 3:
+		return apis.OS_ARCH_AARCH64
+	case 4:
+		return "mips64el"
+	default:
+		return ""
+	}
+}
+
 func (s *SInstance) GetIDisks() ([]cloudprovider.ICloudDisk, error) {
 	var ret []cloudprovider.ICloudDisk
 	for i := range s.DomainDiskDbRspList {
@@ -103,7 +131,17 @@ func (s *SInstance) GetINics() ([]cloudprovider.ICloudNic, error) {
 }
 
 func (s *SInstance) GetIEIP() (cloudprovider.ICloudEIP, error) {
-	return nil, nil
+	eips, err := s.host.cluster.region.getEips()
+	if err != nil {
+		return nil, err
+	}
+	for i := range eips {
+		if eips[i].BindDevId == s.Id {
+			eips[i].region = s.host.cluster.region
+			return &eips[i], nil
+		}
+	}
+	return nil, cloudprovider.ErrNotFound
 }
 
 func (s *SInstance) GetVcpuCount() int {
@@ -138,7 +176,14 @@ func (s *SInstance) GetOSName() string {
 }
 
 func (s *SInstance) GetBios() string {
-	return "BIOS"
+	detail, err := s.host.cluster.region.GetInstanceDetailById(s.Id)
+	if err != nil {
+		return "UEFI"
+	}
+	if detail.BootType == 0 {
+		return "BIOS"
+	}
+	return "UEFI"
 }
 
 func (s *SInstance) GetMachine() string {
@@ -166,23 +211,52 @@ func (s *SInstance) AssignSecurityGroup(secgroupId string) error {
 }
 
 func (s *SInstance) SetSecurityGroups(secgroupIds []string) error {
-	return cloudprovider.ErrNotImplemented
+	return nil
+	//return cloudprovider.ErrNotImplemented
 }
 
 func (s *SInstance) GetHypervisor() string {
 	return api.HYPERVISOR_WINSTACK
 }
 
+func (s *SInstance) Refresh() error {
+	newInstance, err := s.host.cluster.region.GetInstanceById(s.Id)
+	if err != nil {
+		return err
+	}
+	return jsonutils.Update(s, newInstance)
+}
+
 func (s *SInstance) StartVM(ctx context.Context) error {
-	return cloudprovider.ErrNotImplemented
+	err := s.host.cluster.region.StartVM(s.GetId())
+	if err != nil {
+		return errors.Wrap(err, "Instance.StartVM")
+	}
+	err = cloudprovider.WaitStatus(s, api.VM_RUNNING, 5*time.Second, 300*time.Second)
+	if err != nil {
+		return errors.Wrap(err, "Instance.StartVM.WaitStatus")
+	}
+	return nil
 }
 
 func (s *SInstance) StopVM(ctx context.Context, opts *cloudprovider.ServerStopOptions) error {
-	return cloudprovider.ErrNotImplemented
+	err := s.host.cluster.region.StopVM(s.GetId())
+	if err != nil {
+		return errors.Wrap(err, "Instance.StopVM")
+	}
+	err = cloudprovider.WaitStatus(s, api.VM_READY, 5*time.Second, 300*time.Second)
+	if err != nil {
+		return errors.Wrap(err, "Instance.StopVM.WaitStatus")
+	}
+	return nil
 }
 
 func (s *SInstance) DeleteVM(ctx context.Context) error {
-	return cloudprovider.ErrNotImplemented
+	err := s.host.cluster.region.DeleteVM(s.GetId())
+	if err != nil {
+		return errors.Wrap(err, "Instance.DeleteVM")
+	}
+	return nil
 }
 
 func (s *SInstance) UpdateVM(ctx context.Context, name string) error {
@@ -242,7 +316,7 @@ func (s *SInstance) GetStatus() string {
 	case 1: //运行
 		return api.VM_RUNNING
 	case 2: //关闭
-		return api.VM_STOPPING
+		return api.VM_READY
 	case 3: //暂停
 		return api.VM_STARTING
 	default:
@@ -254,7 +328,7 @@ func (s *SRegion) GetInstancesByHostId(hostId string) ([]SInstance, error) {
 	var instances []SInstance
 	start, size := 1, 10
 	for {
-		ret, err := s.GetInstances("", hostId, "", start, size)
+		ret, err := s.GetInstances("", hostId, "", "", start, size)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +347,7 @@ func (s *SRegion) GetInstancesByClusterId(clusterId string) ([]SInstance, error)
 	var instances []SInstance
 	start, size := 1, 10
 	for {
-		ret, err := s.GetInstances("", clusterId, "", start, size)
+		ret, err := s.GetInstances("", "", clusterId, "", start, size)
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +362,50 @@ func (s *SRegion) GetInstancesByClusterId(clusterId string) ([]SInstance, error)
 	return instances, nil
 }
 
-func (s *SRegion) GetInstances(id, hostId, clusterId string, start, size int) ([]SInstance, error) {
+func (s *SRegion) GetInstancesByName(name string) (*SInstance, error) {
+	instance, err := s.GetInstances("", "", "", name, 0, 1)
+	if err != nil {
+		return nil, err
+	}
+	for i := range instance {
+		if instance[i].GetName() == name {
+			return &instance[i], nil
+		}
+	}
+	return nil, cloudprovider.ErrNotFound
+}
+
+func (s *SRegion) GetInstanceById(id string) (*SInstance, error) {
+	instances, err := s.GetInstances(id, "", "", "", 0, 1)
+	if err != nil {
+		return nil, err
+	}
+	for i := range instances {
+		if instances[i].GetId() == id {
+			return &instances[i], nil
+		}
+	}
+	return nil, cloudprovider.ErrNotFound
+}
+
+type SInstanceDetail struct {
+	BootType int
+	Cpu      struct {
+		Arch int
+	}
+}
+
+func (s *SRegion) GetInstanceDetailById(id string) (*SInstanceDetail, error) {
+	URL := fmt.Sprintf(INSTANCE_DETAIL_URL, id)
+	resp, err := s.client.invokeGET(URL, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var ret SInstanceDetail
+	return &ret, resp.Unmarshal(&ret)
+}
+
+func (s *SRegion) GetInstances(id, hostId, clusterId string, name string, start, size int) ([]SInstance, error) {
 	query := make(map[string]string)
 	if size <= 0 {
 		size = 10
@@ -305,6 +422,9 @@ func (s *SRegion) GetInstances(id, hostId, clusterId string, start, size int) ([
 	}
 	if len(clusterId) > 0 {
 		query["clusterId"] = clusterId
+	}
+	if len(name) > 0 {
+		query["name"] = name
 	}
 	query["start"] = strconv.Itoa(start)
 	query["size"] = strconv.Itoa(size)
@@ -326,4 +446,59 @@ func (s *SRegion) GetVNCURL(id string) (*cloudprovider.ServerVncOutput, error) {
 		Hypervisor: api.HYPERVISOR_WINSTACK,
 	}
 	return ret, nil
+}
+
+func (s *SRegion) StartVM(vmId string) error {
+	URL := fmt.Sprintf(INSTANCE_START_URL, vmId)
+	_, err := s.client.invokePATCH(URL, nil, nil)
+	if err != nil {
+		return errors.Wrap(err, "SRegion.StartVm")
+	}
+
+	return nil
+}
+
+func (s *SRegion) StopVM(vmId string) error {
+	URL := fmt.Sprintf(INSTANCE_SHUTDOWN_URL, vmId)
+	_, err := s.client.invokePATCH(URL, nil, nil)
+	if err != nil {
+		return errors.Wrap(err, "SRegion.StopVm")
+	}
+
+	return nil
+}
+
+func (s *SRegion) DeleteVM(vmId string) error {
+	URL := fmt.Sprintf(INSTANCE_DELETE_URL, vmId)
+	_, err := s.client.invokeDELETE(URL, nil, nil)
+	if err != nil {
+		return errors.Wrap(err, "SRegion.DeleteVm")
+	}
+	return nil
+}
+
+type SVpcInstance struct {
+	VpcId   string
+	VpcName string
+	VpcList []struct {
+		DomainId       string
+		DomainShowName string
+		InterfaceList  []struct {
+			PrivateNetId   string
+			PrivateNetName string
+			InterfaceId    string
+			Mac            string
+			Ip             string
+		}
+	}
+}
+
+func (s *SRegion) GetInstancesByVpcId(vpcId string) (*SVpcInstance, error) {
+	URL := fmt.Sprintf(VPC_INSTANCE_LIST_URL, vpcId)
+	resp, err := s.client.invokeGET(URL, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var ret SVpcInstance
+	return &ret, resp.Unmarshal(&ret)
 }

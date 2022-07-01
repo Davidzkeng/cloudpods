@@ -77,6 +77,8 @@ type SElasticip struct {
 
 	SBillingResourceBase
 
+	//vpc Id,仅私有云不为空
+	Vpc string `width:"36" charset:"ascii" nullable:"true" get:"user" list:"user" create:"optional"`
 	// IP子网Id, 仅私有云不为空
 	NetworkId string `width:"36" charset:"ascii" nullable:"true" get:"user" list:"user" create:"optional"`
 	// 标识弹性或非弹性
@@ -473,6 +475,9 @@ func (self *SElasticip) SyncInstanceWithCloudEip(ctx context.Context, userCred m
 			manager = NatGatewayManager
 		case api.EIP_ASSOCIATE_TYPE_LOADBALANCER:
 			manager = LoadbalancerManager
+		case api.EIP_ASSOCIATE_TYPE_ROUTER:
+			manager = RouteTableManager
+
 		// case api.EIP_ASSOCIATE_TYPE_INSTANCE_GROUP:
 		// not supported
 		// 	manager = GroupManager
@@ -595,6 +600,16 @@ func (manager *SElasticipManager) newFromCloudEip(ctx context.Context, userCred 
 			return nil, errors.Error(msg)
 		}
 		eip.NetworkId = network.GetId()
+	}
+
+	if vpcId := extEip.GetIVpcId(); len(vpcId) > 0 {
+		vpc, err := db.FetchByExternalId(VpcManager, vpcId)
+		if err != nil {
+			msg := fmt.Sprintf("failed to found vpc by externalId %s error: %v", vpcId, err)
+			log.Errorf(msg)
+			return nil, errors.Error(msg)
+		}
+		eip.Vpc = vpc.GetId()
 	}
 
 	var err = func() error {
@@ -964,6 +979,9 @@ func (manager *SElasticipManager) ValidateCreateData(ctx context.Context, userCr
 
 	if input.ChargeType == "" {
 		input.ChargeType = regionDriver.GetEipDefaultChargeType()
+	}
+	if region.isManaged() && len(region.ManagerId) > 0 {
+		input.ManagerId = region.ManagerId
 	}
 
 	if !utils.IsInStringArray(input.ChargeType, []string{api.EIP_CHARGE_TYPE_BY_BANDWIDTH, api.EIP_CHARGE_TYPE_BY_TRAFFIC}) {

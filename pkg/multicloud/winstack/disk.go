@@ -38,8 +38,8 @@ type SDisk struct {
 	Name       string
 	Status     int
 	Type       int
-	Capacity   int
-	Allocation int
+	Capacity   int64
+	Allocation int64
 	Path       string
 }
 

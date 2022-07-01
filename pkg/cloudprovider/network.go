@@ -15,10 +15,14 @@
 package cloudprovider
 
 type SNetworkCreateOptions struct {
-	Name      string
-	Desc      string
-	ProjectId string
-	Cidr      string
+	Name           string
+	Desc           string
+	ProjectId      string
+	Cidr           string
+	IpStart        string
+	IpEnd          string
+	VlanId         int
+	DefaultGateway string
 }
 
 type SWireCreateOptions struct {

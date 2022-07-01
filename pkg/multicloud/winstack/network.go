@@ -26,7 +26,9 @@ import (
 )
 
 const (
-	NETWORKS_LIST_URL = "/api/network/vpcs/%s/networks"
+	NETWORKS_LIST_URL  = "/api/network/vpcs/%s/networks"
+	NETWORK_CREATE_URL = "/api/network/vpcs/%s/networks"
+	NETWORK_DELETE_URL = "/api/network/vpcs/%s/networks/%s/delete"
 )
 
 type SNetwork struct {
@@ -105,7 +107,9 @@ func (s *SNetwork) GetPublicScope() rbacutils.TRbacScope {
 }
 
 func (s *SNetwork) Delete() error {
-	return cloudprovider.ErrNotImplemented
+	URL := fmt.Sprintf(NETWORK_DELETE_URL, s.wire.vpc.Id, s.Id)
+	_, err := s.wire.cluster.region.client.invokePOST(URL, nil, nil, nil)
+	return err
 }
 
 func (s *SNetwork) GetAllocTimeoutSeconds() int {
@@ -129,12 +133,17 @@ func (s *SNetwork) Contains(ip string) bool {
 }
 
 func (s *SWire) GetINetworkById(id string) (cloudprovider.ICloudNetwork, error) {
+	return s.getNetworkById(id)
+}
+
+func (s *SWire) getNetworkById(id string) (*SNetwork, error) {
 	networks, err := s.vpc.region.GetNetworks(s.vpc.Id)
 	if err != nil {
 		return nil, err
 	}
 	for i := range networks {
 		if networks[i].GetGlobalId() == id {
+			networks[i].wire = s
 			return &networks[i], nil
 		}
 	}
@@ -162,4 +171,33 @@ func (s *SRegion) GetNetworks(vpcId string) ([]SNetwork, error) {
 	}
 	var networks []SNetwork
 	return networks, resp.Unmarshal(&networks)
+}
+
+func (s *SRegion) CreateNetwork(vpcId, name string, cidr string, desc string) (*SNetwork, error) {
+	URL := fmt.Sprintf(NETWORK_CREATE_URL, vpcId)
+	gateway, err := getDefaultGateWay(cidr)
+	if err != nil {
+		return nil, err
+	}
+	body := make(map[string]string)
+	body["cidr"] = cidr
+	body["gateway"] = gateway
+	body["ipVersion"] = "4"
+	body["name"] = name
+	var ret SNetwork
+	resp, err := s.client.invokePOST(URL, nil, nil, body)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, resp.Unmarshal(&ret)
+}
+
+func getDefaultGateWay(cidr string) (string, error) {
+	pref, err := netutils.NewIPV4Prefix(cidr)
+	if err != nil {
+		return "", errors.Wrap(err, "getDefaultGateWay.NewIPV4Prefix")
+	}
+	startIp := pref.Address.NetAddr(pref.MaskLen) // 0
+	startIp = startIp.StepUp()                    // 1
+	return startIp.String(), nil
 }

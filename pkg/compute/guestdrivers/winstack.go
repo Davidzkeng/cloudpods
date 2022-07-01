@@ -21,6 +21,7 @@ import (
 	"yunion.io/x/onecloud/pkg/compute/models"
 	"yunion.io/x/onecloud/pkg/compute/options"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/onecloud/pkg/util/billing"
 	"yunion.io/x/onecloud/pkg/util/rbacutils"
 )
 
@@ -75,3 +76,50 @@ func (self *SWinStackGuestDriver) GetComputeQuotaKeys(scope rbacutils.TRbacScope
 func (self *SWinStackGuestDriver) GetDefaultSysDiskBackend() string {
 	return ""
 }
+
+func (self *SWinStackGuestDriver) GetStorageTypes() []string {
+	return []string{
+		api.STORAGE_WINSTACK_LOCAL,
+		api.STORAGE_WINSTACK_IPSAN,
+		api.STORAGE_WINSTACK_FCSAN,
+		api.STORAGE_WINSTACK_CEPH,
+		api.STORAGE_WINSTACK_NAS,
+		api.STORAGE_WINSTACK_NVME,
+	}
+}
+
+func (self *SWinStackGuestDriver) IsNeedInjectPasswordByCloudInit() bool {
+	return true
+}
+
+func (self *SWinStackGuestDriver) IsWindowsUserDataTypeNeedEncode() bool {
+	return true
+}
+
+func (self *SWinStackGuestDriver) GetGuestInitialStateAfterCreate() string {
+	return api.VM_RUNNING
+}
+
+func (self *SWinStackGuestDriver) GetGuestInitialStateAfterRebuild() string {
+	return api.VM_READY
+}
+
+func (self *SWinStackGuestDriver) GetUserDataType() string {
+	return cloudprovider.CLOUD_SHELL
+}
+
+func (self *SWinStackGuestDriver) AllowReconfigGuest() bool {
+	return true
+}
+
+func (self *SWinStackGuestDriver) IsSupportedBillingCycle(bc billing.SBillingCycle) bool {
+	return false
+}
+
+func (self *SWinStackGuestDriver) DoScheduleCPUFilter() bool { return false }
+
+func (self *SWinStackGuestDriver) DoScheduleMemoryFilter() bool { return true }
+
+func (self *SWinStackGuestDriver) DoScheduleSKUFilter() bool { return false }
+
+func (self *SWinStackGuestDriver) DoScheduleStorageFilter() bool { return true }

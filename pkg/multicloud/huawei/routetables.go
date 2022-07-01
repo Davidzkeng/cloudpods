@@ -215,6 +215,10 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return err
 }
 
+func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+	return cloudprovider.ErrNotSupported
+}
+
 func (self *SRouteTable) UpdateRoute(route cloudprovider.RouteSet) error {
 	err := self.RemoveRoute(route)
 	if err != nil {

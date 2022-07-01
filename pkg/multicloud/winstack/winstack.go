@@ -84,10 +84,24 @@ func (cfg *WinStackConfig) Debug(debug bool) *WinStackConfig {
 type SWinStackClient struct {
 	*WinStackConfig
 
-	cli *http.Client
-	h   http.Header
+	cli   *http.Client
+	h     http.Header
+	hLock sync.RWMutex
 
 	regions []SRegion
+}
+
+func (client *SWinStackClient) SetHeader(key, value string) {
+	client.hLock.Lock()
+	client.h.Set(key, value)
+	client.hLock.Unlock()
+}
+
+func (client *SWinStackClient) GetHeader() http.Header {
+	client.hLock.RLock()
+	h := client.h
+	client.hLock.RUnlock()
+	return h
 }
 
 func NewWinStackClient(cfg *WinStackConfig) (*SWinStackClient, error) {
@@ -143,8 +157,22 @@ func (client *SWinStackClient) GetIRegionById(id string) (cloudprovider.ICloudRe
 
 func (client *SWinStackClient) GetCapabilities() []string {
 	return []string{
-		cloudprovider.CLOUD_CAPABILITY_COMPUTE + cloudprovider.READ_ONLY_SUFFIX,
-		cloudprovider.CLOUD_CAPABILITY_NETWORK + cloudprovider.READ_ONLY_SUFFIX,
+		cloudprovider.CLOUD_CAPABILITY_PROJECT,
+		cloudprovider.CLOUD_CAPABILITY_COMPUTE,
+		cloudprovider.CLOUD_CAPABILITY_NETWORK,
+		cloudprovider.CLOUD_CAPABILITY_EIP,
+		cloudprovider.CLOUD_CAPABILITY_LOADBALANCER,
+		cloudprovider.CLOUD_CAPABILITY_OBJECTSTORE,
+		cloudprovider.CLOUD_CAPABILITY_RDS,
+		cloudprovider.CLOUD_CAPABILITY_CACHE,
+		cloudprovider.CLOUD_CAPABILITY_EVENT,
+		cloudprovider.CLOUD_CAPABILITY_CLOUDID,
+		cloudprovider.CLOUD_CAPABILITY_DNSZONE,
+		cloudprovider.CLOUD_CAPABILITY_INTERVPCNETWORK,
+		cloudprovider.CLOUD_CAPABILITY_SAML_AUTH,
+		cloudprovider.CLOUD_CAPABILITY_NAT,
+		cloudprovider.CLOUD_CAPABILITY_NAS,
+		cloudprovider.CLOUD_CAPABILITY_WAF,
 	}
 }
 
@@ -192,7 +220,7 @@ func (client *SWinStackClient) refreshSession() error {
 	}
 	if resp.Contains("sessionId") {
 		sessionId, _ := resp.GetString("sessionId")
-		client.h.Set("Cookie", "SESSION="+sessionId)
+		client.SetHeader("Cookie", "SESSION="+sessionId)
 	}
 	return nil
 }
@@ -224,6 +252,18 @@ func (client *SWinStackClient) invokePOST(path string, header map[string]string,
 	return client.invoke(httputils.POST, path, header, query, body)
 }
 
+func (client *SWinStackClient) invokePUT(path string, header map[string]string, query map[string]string, body interface{}) (jsonutils.JSONObject, error) {
+	return client.invoke(httputils.POST, path, header, query, body)
+}
+
+func (client *SWinStackClient) invokePATCH(path string, header map[string]string, query map[string]string) (jsonutils.JSONObject, error) {
+	return client.invoke(httputils.PATCH, path, header, query, nil)
+}
+
+func (client *SWinStackClient) invokeDELETE(path string, header map[string]string, query map[string]string) (jsonutils.JSONObject, error) {
+	return client.invoke(httputils.DELETE, path, header, query, nil)
+}
+
 func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string, header map[string]string, query map[string]string, body interface{}) (jsonutils.JSONObject, error) {
 	if !client.skipRefreshSession(path) && !client.checkSession() {
 		log.Printf("path:%s,checkSession:%v", path, client.checkSession())
@@ -243,23 +283,21 @@ func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string,
 		q += "&" + encode(k, v)
 	}
 
-	h := client.h
 	for k, v := range header {
-		h.Set(k, v)
+		client.SetHeader(k, v)
 	}
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
-	h.Set("Content-Type", "application/json")
+	client.SetHeader("Content-Type", "application/json")
 	URL := client.endpoint + path + "?" + q
-	resp, err := httputils.Request(client.cli, context.Background(), method, URL, h, bytes.NewReader(b), client.debug)
+	resp, err := httputils.Request(client.cli, context.Background(), method, URL, client.GetHeader(), bytes.NewReader(b), client.debug)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		log.Printf("session:%v", client.h.Get("Cookie"))
 		return nil, UnauthorizedError
 	}
 	data, err := ioutil.ReadAll(resp.Body)
@@ -276,7 +314,7 @@ func (client *SWinStackClient) invoke(method httputils.THttpMethod, path string,
 	}
 
 	if client.debug {
-		log.Debugf("response: %s", obj.PrettyString())
+		log.Errorf("response: %s", obj.PrettyString())
 	}
 	wErr := &sWinStackError{}
 	obj.Unmarshal(&wErr)

@@ -191,6 +191,10 @@ func (self *SEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEipAddress) GetInternetChargeType() string {
 	switch self.InternetChargeType {
 	case InternetChargeByTraffic:

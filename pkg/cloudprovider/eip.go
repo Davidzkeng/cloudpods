@@ -29,6 +29,7 @@ type SEip struct {
 	NetworkExternalId string
 	IP                string
 	ProjectId         string
+	VpcExternalId     string
 }
 
 type AssociateConfig struct {

@@ -154,7 +154,6 @@ func (man *SNetworkAddressManager) deleteByGuestnetworkId(ctx context.Context, u
 
 func (man *SNetworkAddressManager) syncGuestnetworkICloudNic(ctx context.Context, userCred mcclient.TokenCredential, guestnetwork *SGuestnetwork, iNic cloudprovider.ICloudNic) error {
 	ipAddrs, err := iNic.GetSubAddress()
-	log.Printf("tttttttttt:ipAddrs:%v", ipAddrs)
 	if err != nil {
 		return err
 	}

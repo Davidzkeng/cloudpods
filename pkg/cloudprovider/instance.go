@@ -194,7 +194,7 @@ func (vmConfig *SManagedVMCreateConfig) GetConfig(config *jsonutils.JSONDict) er
 		vmConfig.Password = seclib2.RandomPassword2(12)
 	}
 	if vmConfig.IsNeedInjectPasswordByCloudInit {
-		err = vmConfig.InjectPasswordByCloudInit()
+		err := vmConfig.InjectPasswordByCloudInit()
 		if err != nil {
 			log.Warningf("failed to inject password by cloud-init error: %v", err)
 		}

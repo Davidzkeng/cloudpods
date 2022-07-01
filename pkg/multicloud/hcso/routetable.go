@@ -284,6 +284,10 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return nil
 }
 
+func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+	return cloudprovider.ErrNotSupported
+}
+
 // GetRouteTables return []SRouteTable of self
 func (self *SVpc) getRouteTables() ([]SRouteTable, error) {
 	// every Vpc has two route table in Huawei Cloud

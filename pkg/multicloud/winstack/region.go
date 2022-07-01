@@ -124,3 +124,33 @@ func (client *SWinStackClient) GetRegions() ([]SRegion, error) {
 func (s *SRegion) GetClient() *SWinStackClient {
 	return s.client
 }
+
+func (s *SRegion) GetIStorage() ([]cloudprovider.ICloudStorage, error) {
+	var ret []cloudprovider.ICloudStorage
+
+	cluster, err := s.GetIZones()
+	if err != nil {
+		return nil, err
+	}
+	for i := range cluster {
+		storage, err := cluster[i].GetIStorages()
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, storage...)
+	}
+	return ret, nil
+}
+
+func (s *SRegion) GetIStorageById(id string) (cloudprovider.ICloudStorage, error) {
+	storages, err := s.GetIStorage()
+	if err != nil {
+		return nil, err
+	}
+	for i := range storages {
+		if storages[i].GetGlobalId() == id {
+			return storages[i], nil
+		}
+	}
+	return nil, cloudprovider.ErrNotFound
+}

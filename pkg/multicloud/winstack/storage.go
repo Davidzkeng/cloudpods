@@ -27,13 +27,13 @@ type TStorageType string
 
 //储的类型,1 FC-SAN， 2 IP-SAN，3 NAS，4 分布式存储,5 本地存储,6.NVME存储
 const (
-	StorageTypeFCSAN       = TStorageType("FC-SAN")
-	StorageTypeIPSAN       = TStorageType("IP-SAN")
-	StorageTypeNAS         = TStorageType("NAS")
-	StorageTypeDistributed = TStorageType("Distributed")
-	StorageTypeLocal       = TStorageType("Local")
-	StorageTypeNVME        = TStorageType("NVME")
-	StorageTypeUnknown     = TStorageType("Unknown")
+	StorageTypeFCSAN   = TStorageType("FC-SAN")
+	StorageTypeIPSAN   = TStorageType("IP-SAN")
+	StorageTypeNAS     = TStorageType("NAS")
+	StorageTypeCeph    = TStorageType("CEPH")
+	StorageTypeLocal   = TStorageType("Local")
+	StorageTypeNVME    = TStorageType("NVME")
+	StorageTypeUnknown = TStorageType("Unknown")
 )
 
 const (
@@ -73,7 +73,7 @@ func (s *SStorage) GetStorageType() string {
 	case 3:
 		return string(StorageTypeNAS)
 	case 4:
-		return string(StorageTypeDistributed)
+		return string(StorageTypeCeph)
 	case 5:
 		return string(StorageTypeLocal)
 	case 6:
@@ -138,6 +138,21 @@ func (s *SStorage) GetStatus() string {
 }
 
 func (s *SCluster) GetIStorageById(id string) (cloudprovider.ICloudStorage, error) {
+	storages, err := s.region.getStorages()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range storages {
+		if storages[i].GetGlobalId() == id {
+			storages[i].cluster = s
+			return &storages[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+}
+
+func (s *SCluster) getStorageById(id string) (*SStorage, error) {
 	storages, err := s.region.getStorages()
 	if err != nil {
 		return nil, err

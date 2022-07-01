@@ -201,6 +201,10 @@ func (self *SEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEipAddress) GetInternetChargeType() string {
 	// https://support.huaweicloud.com/api-vpc/zh-cn_topic_0020090603.html
 	bandwidth, err := self.region.GetEipBandwidth(self.BandwidthID)

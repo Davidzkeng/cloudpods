@@ -106,6 +106,10 @@ func (e *SEip) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEip) GetIVpcId() string {
+	return ""
+}
+
 func (e *SEip) GetInternetChargeType() string {
 	switch e.Charge.ChargeMode {
 	case "postpaid_by_usage":

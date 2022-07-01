@@ -16,6 +16,7 @@ package winstack
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"yunion.io/x/onecloud/pkg/apis"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
@@ -26,7 +27,8 @@ import (
 )
 
 const (
-	IMAGE_LIST_URL = "/api/compute/domain_templates"
+	IMAGE_LIST_URL   = "/api/compute/domain_templates"
+	IMAGE_DETAIL_URL = "/api/compute/domain_templates/%s"
 )
 
 type SImage struct {
@@ -59,6 +61,25 @@ type SImage struct {
 	CreateUserName          string `json:"createUserName"`
 	ManagerOwned            int    `json:"managerOwned"`
 	IsEncrypt               bool   `json:"isEncrypt"`
+	DiskDevices             []struct {
+		Id               string `json:"id"`
+		DomainTemplateId string `json:"domainTemplateId"`
+		VolFullPath      string `json:"volFullPath"`
+		VolName          string `json:"volName"`
+		VolMd5           string `json:"volMd5"`
+		VolSm3           string `json:"volSm3"`
+		Capacity         int64  `json:"capacity"`
+		Allocation       int64  `json:"allocation"`
+		Bus              int    `json:"bus"`
+		Dev              string `json:"dev"`
+		Cache            int    `json:"cache"`
+	} `json:"diskDevices"`
+	DomainMemoryResp struct {
+		CurrentMemory int64 `json:"currentMemory"`
+		Memory        int64 `json:"memory"`
+		MaxMemory     int   `json:"maxMemory"`
+		MinMemory     int   `json:"minMemory"`
+	} `json:"domainMemoryResp"`
 }
 
 func (s *SImage) GetProjectId() string {
@@ -74,7 +95,7 @@ func (s *SImage) GetIStoragecache() cloudprovider.ICloudStoragecache {
 }
 
 func (s *SImage) GetSizeByte() int64 {
-	return 0
+	return s.DeviceDiskTotalCapacity
 }
 
 func (s *SImage) GetImageType() cloudprovider.TImageType {
@@ -82,7 +103,7 @@ func (s *SImage) GetImageType() cloudprovider.TImageType {
 }
 
 func (s *SImage) GetImageStatus() string {
-	return ""
+	return cloudprovider.IMAGE_STATUS_ACTIVE
 }
 
 func (s *SImage) GetOsType() cloudprovider.TOsType {
@@ -97,7 +118,7 @@ func (s *SImage) GetOsDist() string {
 }
 
 func (s *SImage) GetOsVersion() string {
-	return ""
+	return s.OsVersion
 }
 
 func (s *SImage) GetOsArch() string {
@@ -109,17 +130,19 @@ func (s *SImage) GetOsArch() string {
 		return apis.OS_ARCH_X86_64
 	case 3:
 		return apis.OS_ARCH_AARCH64
-	default:
+	case 4:
 		return "mips64el"
+	default:
+		return ""
 	}
 }
 
 func (s *SImage) GetMinOsDiskSizeGb() int {
-	return 40
+	return int(s.GetSizeByte() / 1024 / 1024 / 1024)
 }
 
 func (s *SImage) GetMinRamSizeMb() int {
-	return 0
+	return int(s.DomainMemoryResp.CurrentMemory / 1024 / 1024)
 }
 
 func (s *SImage) GetImageFormat() string {
@@ -176,7 +199,17 @@ func (s *SRegion) GetImages(id string, start, size int) ([]SImage, error) {
 		return nil, err
 	}
 	var ret []SImage
-	return ret, resp.Unmarshal(&ret, "data")
+	if err := resp.Unmarshal(&ret, "data"); err != nil {
+		return nil, err
+	}
+	for i := range ret {
+		imgDetail, err := s.client.invokeGET(fmt.Sprintf(IMAGE_DETAIL_URL, ret[i].Id), nil, nil)
+		if err != nil {
+			continue
+		}
+		imgDetail.Unmarshal(&ret[i])
+	}
+	return ret, nil
 }
 
 func (s *SRegion) getImages() ([]SImage, error) {
@@ -198,6 +231,19 @@ func (s *SRegion) getImages() ([]SImage, error) {
 	return images, nil
 }
 
+func (s *SRegion) getImage(id string) (*SImage, error) {
+	images, err := s.getImages()
+	if err != nil {
+		return nil, err
+	}
+	for i := range images {
+		if images[i].GetGlobalId() == id {
+			return &images[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+}
+
 func (s *SStoragecache) GetICloudImages() ([]cloudprovider.ICloudImage, error) {
 	images, err := s.region.getImages()
 	if err != nil {
@@ -205,24 +251,17 @@ func (s *SStoragecache) GetICloudImages() ([]cloudprovider.ICloudImage, error) {
 	}
 	var ret []cloudprovider.ICloudImage
 	for i := range images {
-		if images[i].StorageId == s.storageId {
-			images[i].cache = s
-			ret = append(ret, &images[i])
-		}
+		images[i].cache = s
+		ret = append(ret, &images[i])
 	}
 	return ret, nil
 }
 
 func (s *SStoragecache) GetIImageById(id string) (cloudprovider.ICloudImage, error) {
-	images, err := s.region.getImages()
+	image, err := s.region.getImage(id)
 	if err != nil {
 		return nil, err
 	}
-	for i := range images {
-		if images[i].GetGlobalId() == id {
-			images[i].cache = s
-			return &images[i], nil
-		}
-	}
-	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+	image.cache = s
+	return image, nil
 }

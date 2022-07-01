@@ -438,6 +438,7 @@ type ICloudEIP interface {
 	GetIpAddr() string
 	GetMode() string
 	GetINetworkId() string
+	GetIVpcId() string
 	GetAssociationType() string
 	GetAssociationExternalId() string
 
@@ -478,6 +479,9 @@ type ICloudRouteTable interface {
 	CreateRoute(route RouteSet) error
 	UpdateRoute(route RouteSet) error
 	RemoveRoute(route RouteSet) error
+
+	//添加路由接口
+	AddRouteInterface(routeInterface RouteInterface) error
 }
 
 type ICloudRoute interface {

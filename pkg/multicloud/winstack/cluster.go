@@ -15,6 +15,7 @@
 package winstack
 
 import (
+	"yunion.io/x/log"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
@@ -118,4 +119,32 @@ func (s *SRegion) GetClusters() ([]SCluster, error) {
 	}
 	var ret []SCluster
 	return ret, resp.Unmarshal(&ret, "data")
+}
+
+func (s *SCluster) GetIWires() ([]cloudprovider.ICloudWire, error) {
+	vpcs, err := s.region.getVpcs()
+	if err != nil {
+		return nil, err
+	}
+	var ret []cloudprovider.ICloudWire
+	for i := range vpcs {
+		vpcs[i].region = s.region
+		wire := &SWire{cluster: s, vpc: &vpcs[i]}
+		ret = append(ret, wire)
+	}
+	return ret, nil
+}
+
+func (s *SCluster) getNetworkById(networkId string) *SNetwork {
+	iwires, _ := s.GetIWires()
+	log.Debugf("Search in wires %d", len(iwires))
+	for i := 0; i < len(iwires); i += 1 {
+		log.Debugf("Search in wire %s", iwires[i].GetName())
+		wire := iwires[i].(*SWire)
+		net, _ := wire.getNetworkById(networkId)
+		if net != nil {
+			return net
+		}
+	}
+	return nil
 }

@@ -15,7 +15,9 @@
 package winstack
 
 import (
+	"log"
 	"testing"
+
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
 )
@@ -49,7 +51,7 @@ func InitRegion() {
 }
 
 func TestSRegion_GetInstances(t *testing.T) {
-	instance, err := region.GetInstances("", "", "", 1, 1)
+	instance, err := region.GetInstancesByName("winstack-create-56")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,4 +88,75 @@ func TestSRegion_GetStorages(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(len(storages))
+}
+
+func TestSRegion_GetImages(t *testing.T) {
+	images, err := region.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", images)
+}
+
+func TestSRegion_CreateSecurityGroup(t *testing.T) {
+	resp, err := region.CreateSecurityGroup("392dd5e8-0848-4725-bc10-b719692a5f00", "hello", "t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(resp)
+}
+
+func TestSRegion_GetSecurityGroups(t *testing.T) {
+	ret, err := region.getSecurityGroups()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Println(ret)
+}
+
+func TestSRegion_AssignSecurityGroup(t *testing.T) {
+	err := region.AssignSecurityGroup("0d040bb3-4e65-4b26-af68-8e135c2e1939", "392dd5e8-0848-4725-bc10-b719692a5f00", "d5d8123a-b531-4da5-bfb5-1976c2ff27aa")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+}
+
+func TestSRegion_getEip(t *testing.T) {
+	eip, err := region.getEipByIp("10.252.226.52")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(eip)
+}
+
+func TestSRegion_CreateEIP(t *testing.T) {
+	opts := cloudprovider.SEip{
+		Name:              "",
+		BandwidthMbps:     0,
+		ChargeType:        "",
+		BGPType:           "",
+		NetworkExternalId: "",
+		IP:                "",
+		ProjectId:         "",
+		VpcExternalId:     "",
+	}
+	region.CreateEIP(&opts)
+}
+
+func TestSRegion_GetEips(t *testing.T) {
+	eips, err := region.getEips()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range eips {
+		log.Printf("%+v", eips[i].Ip)
+	}
+}
+
+func TestSRegion_GetRouterNetworkId(t *testing.T) {
+	ids, err := region.GetRouterNetworkId("419c5191-8329-447a-8663-9df791733d16")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(ids)
 }

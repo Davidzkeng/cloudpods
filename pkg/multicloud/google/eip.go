@@ -121,6 +121,10 @@ func (addr *SAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SAddress) GetIVpcId() string {
+	return ""
+}
+
 func (addr *SAddress) GetAssociationType() string {
 	if len(addr.GetAssociationExternalId()) > 0 {
 		return api.EIP_ASSOCIATE_TYPE_SERVER

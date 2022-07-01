@@ -176,6 +176,10 @@ func (self *SEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEipAddress) GetBillingType() string {
 	return billing_api.BILLING_TYPE_POSTPAID
 }

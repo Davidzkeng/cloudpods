@@ -66,6 +66,10 @@ func (self *SEip) GetINetworkId() string {
 	return self.SubnetId
 }
 
+func (self *SEip) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEip) GetAssociationType() string {
 	if len(self.InstanceId) > 0 {
 		return api.EIP_ASSOCIATE_TYPE_SERVER

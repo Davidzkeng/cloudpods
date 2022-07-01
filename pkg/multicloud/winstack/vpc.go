@@ -15,14 +15,21 @@
 package winstack
 
 import (
+	"fmt"
 	"strconv"
+
+	"yunion.io/x/jsonutils"
+
+	"github.com/pkg/errors"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/multicloud"
 )
 
 const (
-	VPC_LIST_URL = "/api/network/vpcs"
+	VPC_LIST_URL   = "/api/network/vpcs"
+	VPC_CREATE_URL = "/api/network/vpcs"
+	VPC_DELETE_URL = "/api/network/vpcs/%s/delete"
 )
 
 type SVpc struct {
@@ -52,22 +59,28 @@ func (s *SVpc) GetISecurityGroups() ([]cloudprovider.ICloudSecurityGroup, error)
 	}
 	var ret []cloudprovider.ICloudSecurityGroup
 	for i := range groups {
+		if groups[i].ProjectId != s.Id {
+			continue
+		}
 		groups[i].region = s.region
 		ret = append(ret, &groups[i])
 	}
 	return ret, nil
 }
 
-func (s *SVpc) GetIRouteTables() ([]cloudprovider.ICloudRouteTable, error) {
-	return nil, cloudprovider.ErrNotImplemented
-}
+func (s *SVpc) Refresh() error {
+	newVpc, err := s.region.GetIVpcById(s.Id)
+	if err != nil {
+		return err
+	}
+	return jsonutils.Update(s, newVpc)
 
-func (s *SVpc) GetIRouteTableById(routeTableId string) (cloudprovider.ICloudRouteTable, error) {
-	return nil, cloudprovider.ErrNotImplemented
 }
 
 func (s *SVpc) Delete() error {
-	return cloudprovider.ErrNotImplemented
+	URL := fmt.Sprintf(VPC_DELETE_URL, s.Id)
+	_, err := s.region.client.invokePOST(URL, nil, nil, nil)
+	return err
 }
 
 func (s *SVpc) GetId() string {
@@ -122,7 +135,29 @@ func (s *SRegion) GetIVpcs() ([]cloudprovider.ICloudVpc, error) {
 		vpcs[i].region = s
 		ret = append(ret, &vpcs[i])
 	}
+	//增加一个default vpc用来管理外部网络
+	classicVpcs, err := s.getClassicVpcs()
+	if err != nil {
+		return nil, errors.Wrapf(err, "ListClassicVpcs")
+	}
+	for i := range classicVpcs {
+		classicVpcs[i].region = s
+		ret = append(ret, &classicVpcs[i])
+	}
 	return ret, nil
+}
+
+func (s *SRegion) GetIVpcById(id string) (cloudprovider.ICloudVpc, error) {
+	vpcs, err := s.GetIVpcs()
+	if err != nil {
+		return nil, err
+	}
+	for i := range vpcs {
+		if vpcs[i].GetGlobalId() == id {
+			return vpcs[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
 }
 
 func (s *SRegion) getVpcs() ([]SVpc, error) {
@@ -142,4 +177,16 @@ func (s *SRegion) getVpcs() ([]SVpc, error) {
 		start += 1
 	}
 	return vpcs, nil
+}
+
+func (s *SRegion) CreateIVpc(opts *cloudprovider.VpcCreateOptions) (cloudprovider.ICloudVpc, error) {
+	body := make(map[string]string)
+	body["name"] = opts.NAME
+	body["remark"] = opts.Desc
+	resp, err := s.client.invokePOST(VPC_CREATE_URL, nil, nil, body)
+	if err != nil {
+		return nil, err
+	}
+	var ret SVpc
+	return &ret, resp.Unmarshal(&ret)
 }

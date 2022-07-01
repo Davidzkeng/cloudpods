@@ -22,28 +22,29 @@ import (
 	"yunion.io/x/pkg/errors"
 )
 
-type SWire struct {
+type SClassicWire struct {
 	multicloud.STagBase
 	multicloud.SResourceBase
 
 	cluster *SCluster
-	vpc     *SVpc
+	vpc     *SClassicVpc
 }
 
-func (s *SWire) GetIVpc() cloudprovider.ICloudVpc {
+func (s *SClassicWire) GetIVpc() cloudprovider.ICloudVpc {
 	return s.vpc
 }
 
-func (s *SWire) GetIZone() cloudprovider.ICloudZone {
+func (s *SClassicWire) GetIZone() cloudprovider.ICloudZone {
 	return s.cluster
 }
 
-func (s *SWire) GetBandwidth() int {
+func (s *SClassicWire) GetBandwidth() int {
 	return 1000
 }
 
-func (s *SWire) CreateINetwork(opts *cloudprovider.SNetworkCreateOptions) (cloudprovider.ICloudNetwork, error) {
-	network, err := s.cluster.region.CreateNetwork(s.vpc.Id, opts.Name, opts.Cidr, opts.Desc)
+func (s *SClassicWire) CreateINetwork(opts *cloudprovider.SNetworkCreateOptions) (cloudprovider.ICloudNetwork, error) {
+	network, err := s.cluster.region.CreateClassicNetwork(s.vpc.Id, s.GetName(), opts.Name, opts.Cidr, opts.IpStart,
+		opts.IpEnd, opts.DefaultGateway, opts.VlanId, opts.Desc)
 	if err != nil {
 		return nil, err
 	}
@@ -51,23 +52,23 @@ func (s *SWire) CreateINetwork(opts *cloudprovider.SNetworkCreateOptions) (cloud
 	return network, nil
 }
 
-func (s *SWire) GetId() string {
+func (s *SClassicWire) GetId() string {
 	return fmt.Sprintf("%s/%s", s.vpc.GetGlobalId(), s.cluster.GetGlobalId())
 }
 
-func (s *SWire) GetName() string {
+func (s *SClassicWire) GetName() string {
 	return fmt.Sprintf("%s-%s", s.vpc.GetName(), s.cluster.GetName())
 }
 
-func (s *SWire) GetGlobalId() string {
+func (s *SClassicWire) GetGlobalId() string {
 	return fmt.Sprintf("%s/%s", s.vpc.GetGlobalId(), s.cluster.GetGlobalId())
 }
 
-func (s *SWire) GetStatus() string {
+func (s *SClassicWire) GetStatus() string {
 	return api.WIRE_STATUS_AVAILABLE
 }
 
-func (s *SVpc) GetIWireById(id string) (cloudprovider.ICloudWire, error) {
+func (s *SClassicVpc) GetIWireById(id string) (cloudprovider.ICloudWire, error) {
 	wires, err := s.GetIWires()
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func (s *SVpc) GetIWireById(id string) (cloudprovider.ICloudWire, error) {
 	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
 }
 
-func (s *SVpc) GetIWires() ([]cloudprovider.ICloudWire, error) {
+func (s *SClassicVpc) GetIWires() ([]cloudprovider.ICloudWire, error) {
 	clusters, err := s.region.GetClusters()
 	if err != nil {
 		return nil, err
@@ -88,7 +89,7 @@ func (s *SVpc) GetIWires() ([]cloudprovider.ICloudWire, error) {
 	var ret []cloudprovider.ICloudWire
 	for i := range clusters {
 		clusters[i].region = s.region
-		wire := &SWire{
+		wire := &SClassicWire{
 			vpc:     s,
 			cluster: &clusters[i],
 		}

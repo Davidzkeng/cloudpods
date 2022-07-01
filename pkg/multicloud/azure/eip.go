@@ -202,6 +202,10 @@ func (self *SEipAddress) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEipAddress) GetIVpcId() string {
+	return ""
+}
+
 func (self *SEipAddress) GetGlobalId() string {
 	return strings.ToLower(self.ID)
 }

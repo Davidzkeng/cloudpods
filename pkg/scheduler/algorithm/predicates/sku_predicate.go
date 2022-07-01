@@ -17,6 +17,7 @@ package predicates
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"yunion.io/x/onecloud/pkg/scheduler/core"
 	skuman "yunion.io/x/onecloud/pkg/scheduler/data_manager/sku"
@@ -35,6 +36,7 @@ func (p *InstanceTypePredicate) Clone() core.FitPredicate {
 }
 
 func (p *InstanceTypePredicate) PreExecute(ctx context.Context, u *core.Unit, cs []core.Candidater) (bool, error) {
+	log.Printf("wwwwwwwwwwwwwww,%v,%v", u.SchedData().InstanceType, u.GetHypervisorDriver().DoScheduleSKUFilter())
 	if u.SchedData().InstanceType == "" || !u.GetHypervisorDriver().DoScheduleSKUFilter() {
 		return false, nil
 	}

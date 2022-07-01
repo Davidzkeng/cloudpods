@@ -182,6 +182,10 @@ func (self *SEip) GetINetworkId() string {
 	return ""
 }
 
+func (self *SEip) GetIVpcId() string {
+	return ""
+}
+
 // 弹性IP的计费模式, 枚举值为: "Bandwidth", 带宽计费; "Traffic", 流量计费; "ShareBandwidth",共享带宽模式. 默认为 "Bandwidth".
 func (self *SEip) GetInternetChargeType() string {
 	switch self.PayMode {

@@ -54,7 +54,7 @@ func (self *SWinStackRegionDriver) GenerateSecurityGroupName(name string) string
 }
 
 func (self *SWinStackRegionDriver) IsSecurityGroupBelongVpc() bool {
-	return false
+	return true
 }
 
 func (self *SWinStackRegionDriver) GetDefaultSecurityGroupInRule() cloudprovider.SecurityRule {

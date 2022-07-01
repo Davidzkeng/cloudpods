@@ -26,7 +26,7 @@ func init() {
 		NextToken string
 	}
 	shellutils.R(&SecurityGroupListOptions{}, "security-group-list", "List security-groups", func(cli *winstack.SRegion, args *SecurityGroupListOptions) error {
-		groups, err := cli.GetSecurityGroups(args.Id, args.Name, 0, 10)
+		groups, err := cli.GetSecurityGroups(args.Id, args.Name)
 		if err != nil {
 			return err
 		}

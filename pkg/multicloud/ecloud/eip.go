@@ -132,6 +132,10 @@ func (e *SEip) GetINetworkId() string {
 	return e.PortNetworkId
 }
 
+func (e *SEip) GetIVpcId() string {
+	return ""
+}
+
 func (e *SEip) GetInternetChargeType() string {
 	switch e.ChargeModeEnum {
 	// bandwidthCharge, trafficCharge

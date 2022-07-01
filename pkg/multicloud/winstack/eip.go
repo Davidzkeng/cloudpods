@@ -15,7 +15,10 @@
 package winstack
 
 import (
+	"fmt"
 	"strconv"
+
+	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
@@ -24,7 +27,11 @@ import (
 )
 
 const (
-	FLOAT_IP_LIST = "/api/network/floatIps"
+	FLOAT_IP_LIST_URL    = "/api/network/floatIps"
+	FLOAT_IP_ASSIGN_URL  = "/api/network/floatIps/assgin"
+	FLOAT_IP_BIND_URL    = "/api/network/floatIps/%s/bind"
+	FLOAT_IP_UMBIND_URL  = "/api/network/floatIps/%s/unbind"
+	FLOAT_IP_RELEASE_URL = "/api/network/floatIps/%s/release"
 )
 
 type SEip struct {
@@ -46,7 +53,7 @@ type SEip struct {
 }
 
 func (s *SEip) GetId() string {
-	return s.Ip
+	return s.Id
 }
 
 func (s *SEip) GetName() string {
@@ -54,7 +61,7 @@ func (s *SEip) GetName() string {
 }
 
 func (s *SEip) GetGlobalId() string {
-	return s.Ip
+	return s.Id
 }
 
 func (s *SEip) GetStatus() string {
@@ -74,31 +81,41 @@ func (s *SEip) GetMode() string {
 }
 
 func (s *SEip) GetINetworkId() string {
-	networks, err := s.region.GetNetworks(s.VpcId)
+	network, err := s.region.GetClassicNetworkById(s.ExtNetworkId)
 	if err != nil {
-		log.Errorf("failed to find vpc id for eip %s(%s), error: %v", s.Ip, s.VpcId, err)
+		log.Errorf("failed to find extNetwork %s for eip (%s), error: %v", s.ExtNetworkId, s.Ip, err)
 		return ""
 	}
-	for i := range networks {
-		if networks[i].Contains(s.Ip) {
-			return networks[i].GetGateway()
-		}
+	if network.Contains(s.Ip) {
+		return network.GetGlobalId()
 	}
-	log.Errorf("failed to find eip %s(%s) networkId", s.Ip, s.VpcId)
 
+	log.Errorf("failed to find eip %s(%s) extNetworkId", s.Ip, s.ExtNetworkId)
 	return ""
+}
+
+func (s *SEip) GetIVpcId() string {
+	vpc, err := s.region.GetIVpcById(s.VpcId)
+	if err != nil {
+		return ""
+	}
+	return vpc.GetGlobalId()
 }
 
 func (s *SEip) GetAssociationType() string {
 	switch s.BindDevType {
 	case "VM":
 		return api.EIP_ASSOCIATE_TYPE_SERVER
+	case "ROUTER":
+		return api.EIP_ASSOCIATE_TYPE_ROUTER
+
 	}
 	return ""
 }
 
 func (s *SEip) GetAssociationExternalId() string {
-	if s.BindDevType == "VM" {
+	switch s.BindDevType {
+	case "VM", "ROUTER":
 		return s.BindDevId
 	}
 	return ""
@@ -113,19 +130,65 @@ func (s *SEip) GetInternetChargeType() string {
 }
 
 func (s *SEip) Delete() error {
-	return cloudprovider.ErrNotImplemented
+	URL := fmt.Sprintf(FLOAT_IP_RELEASE_URL, s.Id)
+	_, err := s.region.client.invokePOST(URL, nil, nil, nil)
+	return err
 }
 
 func (s *SEip) Associate(conf *cloudprovider.AssociateConfig) error {
-	return cloudprovider.ErrNotImplemented
+	URL := fmt.Sprintf(FLOAT_IP_BIND_URL, s.Id)
+	body := make(map[string]string)
+
+	switch conf.AssociateType {
+	case api.EIP_ASSOCIATE_TYPE_SERVER:
+		body["deviceType"] = "VM"
+	default:
+		return cloudprovider.ErrNotImplemented
+	}
+	//通过instance_id 查询端口，使用端口分配eip
+	nics, err := s.region.GetInstanceNics(conf.InstanceId)
+	if err != nil {
+		return err
+	}
+	if len(nics) == 0 {
+		return errors.Errorf("GetInstanceNics is empty")
+	}
+	//查询instanceId的名词
+	instance, err := s.region.GetInstanceById(conf.InstanceId)
+	if err != nil {
+		return err
+	}
+	for i := range nics {
+		body["vpcId"] = nics[i].Vpc.VpcId
+		portName := nics[i].InterfaceId
+		body["portName"] = portName
+
+	}
+	body["deviceId"] = conf.InstanceId
+	body["deviceName"] = instance.Name
+	_, err = s.region.client.invokePOST(URL, nil, nil, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *SEip) Dissociate() error {
-	return cloudprovider.ErrNotImplemented
+	URL := fmt.Sprintf(FLOAT_IP_UMBIND_URL, s.Id)
+	_, err := s.region.client.invokePOST(URL, nil, nil, nil)
+	return err
 }
 
 func (s *SEip) ChangeBandwidth(bw int) error {
 	return cloudprovider.ErrNotSupported
+}
+
+func (s *SEip) Refresh() error {
+	newEip, err := s.region.getEipByIp(s.Ip)
+	if err != nil {
+		return err
+	}
+	return jsonutils.Update(s, newEip)
 }
 
 func (s *SRegion) GetIEips() ([]cloudprovider.ICloudEIP, error) {
@@ -142,12 +205,18 @@ func (s *SRegion) GetIEips() ([]cloudprovider.ICloudEIP, error) {
 }
 
 func (s *SRegion) GetIEipById(eipId string) (cloudprovider.ICloudEIP, error) {
-	eip, err := s.getEip(eipId)
+	eips, err := s.getEips()
 	if err != nil {
 		return nil, err
 	}
-	eip.region = s
-	return eip, nil
+	for i := range eips {
+		if eips[i].GetGlobalId() == eipId {
+			eips[i].region = s
+			return &eips[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, eipId)
+
 }
 
 func (s *SRegion) getEips() ([]SEip, error) {
@@ -169,19 +238,20 @@ func (s *SRegion) getEips() ([]SEip, error) {
 	return eips, nil
 }
 
-func (s *SRegion) getEip(id string) (*SEip, error) {
-	eips, err := s.getEips()
+func (s *SRegion) getEipByIp(ip string) (*SEip, error) {
+	eips, err := s.GetEips(ip, 0, 1)
 	if err != nil {
 		return nil, err
 	}
 	for i := range eips {
-		if eips[i].GetGlobalId() == id {
+		if eips[i].Ip == ip {
 			return &eips[i], nil
 		}
 	}
-	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, ip)
 }
-func (s *SRegion) GetEips(id string, start, size int) ([]SEip, error) {
+
+func (s *SRegion) GetEips(ip string, start, size int) ([]SEip, error) {
 	query := make(map[string]string)
 	if size <= 0 {
 		size = 10
@@ -189,17 +259,52 @@ func (s *SRegion) GetEips(id string, start, size int) ([]SEip, error) {
 	if start < 0 {
 		start = 0
 	}
-	if len(id) > 0 {
-		query["id"] = id
+	if len(ip) > 0 {
+		query["ip"] = ip
 		start = 0
 	}
 	query["start"] = strconv.Itoa(start)
 	query["size"] = strconv.Itoa(size)
-	resp, err := s.client.invokeGET(FLOAT_IP_LIST, nil, query)
+	resp, err := s.client.invokeGET(FLOAT_IP_LIST_URL, nil, query)
 	if err != nil {
 		return nil, err
 	}
 	var ret []SEip
 
 	return ret, resp.Unmarshal(&ret, "data")
+}
+
+func (s *SRegion) CreateEIP(opts *cloudprovider.SEip) (cloudprovider.ICloudEIP, error) {
+	classicNetwork, err := s.GetClassicNetworkById(opts.NetworkExternalId)
+	if err != nil {
+		return nil, err
+	}
+	if classicNetwork == nil {
+		return nil, errors.Errorf("external_net is empty")
+	}
+	body := make(map[string]string)
+	body["extNetId"] = classicNetwork.Id
+	body["ip"] = opts.IP
+	body["vpcId"] = opts.VpcExternalId
+	resp, err := s.client.invokePOST(FLOAT_IP_ASSIGN_URL, nil, nil, body)
+
+	if err != nil {
+		return nil, err
+	}
+	var ret SEip
+	ret.region = s
+	return &ret, resp.Unmarshal(&ret)
+}
+
+type SExternalNet struct {
+	Id              string `json:"id"`
+	Name            string `json:"name"`
+	Cidr            string `json:"cidr"`
+	Gateway         string `json:"gateway"`
+	Type            int    `json:"type"`
+	NetType         string `json:"netType"`
+	PhysicalNetwork string `json:"physicalNetwork"`
+	IpRange         string `json:"ipRange"`
+	IpVersion       string `json:"ipVersion"`
+	CreateTime      string `json:"createTime"`
 }
