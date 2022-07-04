@@ -18,6 +18,7 @@ import "fmt"
 
 const (
 	ROUTER_LIST_URL        = "/api/sdn/v2.0/routers"
+	ROUTER_CREATE_URL      = "/api/network/vpcs/%s/routers"
 	ROUTER_SUBNET_LIST_URL = "/api/sdn/v2.0/routers/%s/interfaces"
 )
 
@@ -62,4 +63,17 @@ func (s *SRegion) GetRouterSubnet(routerId string) ([]SSubnet, error) {
 	}
 	var subnet []SSubnet
 	return subnet, resp.Unmarshal(&subnet, "subnets")
+}
+
+func (s *SRegion) CreateRouter(vpcId string, name string, networkId string) (*SRouter, error) {
+	URL := fmt.Sprintf(ROUTER_CREATE_URL, vpcId)
+	body := make(map[string]string)
+	body["name"] = name
+	body["network_id"] = networkId
+	resp, err := s.client.invokePOST(URL, nil, nil, body)
+	if err != nil {
+		return nil, err
+	}
+	var ret SRouter
+	return &ret, resp.Unmarshal(&ret)
 }

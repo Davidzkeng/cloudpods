@@ -24,7 +24,7 @@ func init() {
 		NextToken string
 	}
 	shellutils.R(&StorageListOptions{}, "storage-list", "List storages", func(cli *winstack.SRegion, args *StorageListOptions) error {
-		storages, err := cli.GetStorages("", 0, 10)
+		storages, err := cli.GetStorages("", "", 0, 10)
 		if err != nil {
 			return err
 		}

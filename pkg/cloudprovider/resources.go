@@ -480,8 +480,7 @@ type ICloudRouteTable interface {
 	UpdateRoute(route RouteSet) error
 	RemoveRoute(route RouteSet) error
 
-	//添加路由接口
-	AddRouteInterface(routeInterface RouteInterface) error
+	CreateAssociations(routeInterface RouteInterface) error
 }
 
 type ICloudRoute interface {

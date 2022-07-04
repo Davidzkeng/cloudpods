@@ -245,6 +245,26 @@ func (manager *SElasticipManager) ListItemFilter(
 				q = q.Filter(sqlchemy.NotIn(q.Field("network_id"), gns))
 			}
 			q = q.IsNullOrEmpty("associate_type")
+		case api.EIP_ASSOCIATE_TYPE_ROUTETABLE:
+			_routeTable, err := validators.ValidateModel(userCred, RouteTableManager, &query.UsableEipForAssociateId)
+			if err != nil {
+				return nil, err
+			}
+			routeTable := _routeTable.(*SRouteTable)
+			vpc, err := routeTable.GetVpc()
+			if err != nil {
+				return nil, httperrors.NewGeneralError(errors.Wrapf(err, "routeTable.GetVpc"))
+			}
+			q = q.Equals("cloudregion_id", vpc.CloudregionId)
+			if len(vpc.ManagerId) > 0 {
+				q = q.Equals("manager_id", vpc.ManagerId)
+			}
+			q = q.Filter(
+				sqlchemy.OR(
+					sqlchemy.Equals(q.Field("associate_id"), routeTable.Id),
+					sqlchemy.IsNullOrEmpty(q.Field("associate_id")),
+				),
+			)
 		default:
 			return nil, httperrors.NewInputParameterError("Not support associate type %s, only support %s", associateType, api.EIP_ASSOCIATE_VALID_TYPES)
 		}
@@ -475,7 +495,7 @@ func (self *SElasticip) SyncInstanceWithCloudEip(ctx context.Context, userCred m
 			manager = NatGatewayManager
 		case api.EIP_ASSOCIATE_TYPE_LOADBALANCER:
 			manager = LoadbalancerManager
-		case api.EIP_ASSOCIATE_TYPE_ROUTER:
+		case api.EIP_ASSOCIATE_TYPE_ROUTETABLE:
 			manager = RouteTableManager
 
 		// case api.EIP_ASSOCIATE_TYPE_INSTANCE_GROUP:
@@ -493,6 +513,9 @@ func (self *SElasticip) SyncInstanceWithCloudEip(ctx context.Context, userCred m
 			case api.EIP_ASSOCIATE_TYPE_LOADBALANCER:
 				return q.Equals("manager_id", self.ManagerId)
 			case api.EIP_ASSOCIATE_TYPE_NAT_GATEWAY:
+				sq := VpcManager.Query("id").Equals("manager_id", self.ManagerId)
+				return q.In("vpc_id", sq.SubQuery())
+			case api.EIP_ASSOCIATE_TYPE_ROUTETABLE:
 				sq := VpcManager.Query("id").Equals("manager_id", self.ManagerId)
 				return q.In("vpc_id", sq.SubQuery())
 			}
@@ -743,6 +766,17 @@ func (self *SElasticip) GetAssociateNatGateway() *SNatGateway {
 	return nil
 }
 
+func (self *SElasticip) GetAssociateRouteTable() *SRouteTable {
+	if self.AssociateType == api.EIP_ASSOCIATE_TYPE_ROUTETABLE && len(self.AssociateId) > 0 {
+		routeTable, err := RouteTableManager.FetchById(self.AssociateId)
+		if err != nil {
+			return nil
+		}
+		return routeTable.(*SRouteTable)
+	}
+	return nil
+}
+
 func (self *SElasticip) GetAssociateResource() db.IModel {
 	if vm := self.GetAssociateVM(); vm != nil {
 		return vm
@@ -767,6 +801,7 @@ func (self *SElasticip) Dissociate(ctx context.Context, userCred mcclient.TokenC
 	var nat *SNatGateway
 	var lb *SLoadbalancer
 	var grp *SGroup
+	var routeTable *SRouteTable
 	switch self.AssociateType {
 	case api.EIP_ASSOCIATE_TYPE_SERVER:
 		vm = self.GetAssociateVM()
@@ -788,8 +823,12 @@ func (self *SElasticip) Dissociate(ctx context.Context, userCred mcclient.TokenC
 		if grp == nil {
 			log.Errorf("dissociate instance_group not exists???")
 		}
+	case api.EIP_ASSOCIATE_TYPE_ROUTETABLE:
+		routeTable = self.GetAssociateRouteTable()
+		if routeTable == nil {
+			log.Errorf("dissociate route_table not exists???")
+		}
 	}
-
 	_, err := db.Update(self, func() error {
 		self.AssociateId = ""
 		self.AssociateType = ""
@@ -820,6 +859,12 @@ func (self *SElasticip) Dissociate(ctx context.Context, userCred mcclient.TokenC
 		db.OpsLog.LogDetachEvent(ctx, grp, self, userCred, self.GetShortDesc(ctx))
 		db.OpsLog.LogEvent(self, db.ACT_EIP_DETACH, grp.GetShortDesc(ctx), userCred)
 		db.OpsLog.LogEvent(grp, db.ACT_EIP_DETACH, self.GetShortDesc(ctx), userCred)
+	}
+
+	if routeTable != nil {
+		db.OpsLog.LogDetachEvent(ctx, routeTable, self, userCred, self.GetShortDesc(ctx))
+		db.OpsLog.LogEvent(self, db.ACT_EIP_DETACH, routeTable.GetShortDesc(ctx), userCred)
+		db.OpsLog.LogEvent(routeTable, db.ACT_EIP_DETACH, self.GetShortDesc(ctx), userCred)
 	}
 
 	if self.Mode == api.EIP_MODE_INSTANCE_PUBLICIP {
@@ -938,6 +983,33 @@ func (self *SElasticip) AssociateNatGateway(ctx context.Context, userCred mcclie
 	db.OpsLog.LogAttachEvent(ctx, nat, self, userCred, self.GetShortDesc(ctx))
 	db.OpsLog.LogEvent(self, db.ACT_EIP_ATTACH, nat.GetShortDesc(ctx), userCred)
 	db.OpsLog.LogEvent(nat, db.ACT_EIP_ATTACH, self.GetShortDesc(ctx), userCred)
+
+	return nil
+}
+
+func (self *SElasticip) AssociateRouteTable(ctx context.Context, userCred mcclient.TokenCredential, routeTable *SRouteTable) error {
+	if routeTable.Deleted {
+		return fmt.Errorf("routeTable is deleted")
+	}
+	if len(self.AssociateType) > 0 && len(self.AssociateId) > 0 {
+		if self.AssociateType == api.EIP_ASSOCIATE_TYPE_ROUTETABLE && self.AssociateId == routeTable.Id {
+			return nil
+		} else {
+			return fmt.Errorf("Eip has been associated!!")
+		}
+	}
+	_, err := db.Update(self, func() error {
+		self.AssociateType = api.EIP_ASSOCIATE_TYPE_ROUTETABLE
+		self.AssociateId = routeTable.Id
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	db.OpsLog.LogAttachEvent(ctx, routeTable, self, userCred, self.GetShortDesc(ctx))
+	db.OpsLog.LogEvent(self, db.ACT_EIP_ATTACH, routeTable.GetShortDesc(ctx), userCred)
+	db.OpsLog.LogEvent(routeTable, db.ACT_EIP_ATTACH, self.GetShortDesc(ctx), userCred)
 
 	return nil
 }
@@ -1264,6 +1336,18 @@ func (self *SElasticip) PerformAssociate(ctx context.Context, userCred mcclient.
 		if seip != nil {
 			return input, httperrors.NewInvalidStatusError("loadbalancer is already associated with eip")
 		}
+	case api.EIP_ASSOCIATE_TYPE_ROUTETABLE:
+		routeTableObj, err := RouteTableManager.FetchByIdOrName(userCred, input.InstanceId)
+		if err != nil {
+			if errors.Cause(err) == sql.ErrNoRows {
+				return input, httperrors.NewResourceNotFoundError("routeTable %s not found", input.InstanceId)
+			}
+			return input, httperrors.NewGeneralError(err)
+		}
+		routeTable := routeTableObj.(*SRouteTable)
+
+		lockman.LockObject(ctx, routeTable)
+		defer lockman.ReleaseObject(ctx, routeTable)
 	}
 
 	return input, self.StartEipAssociateInstanceTask(ctx, userCred, input, "")

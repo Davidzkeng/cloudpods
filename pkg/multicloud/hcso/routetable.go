@@ -284,7 +284,7 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return nil
 }
 
-func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+func (self *SRouteTable) CreateAssociations(route cloudprovider.RouteInterface) error {
 	return cloudprovider.ErrNotSupported
 }
 

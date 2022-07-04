@@ -174,7 +174,7 @@ func (self *SRouteTableSet) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
-func (self *SRouteTableSet) AddRouteInterface(route cloudprovider.RouteInterface) error {
+func (self *SRouteTableSet) CreateAssociations(route cloudprovider.RouteInterface) error {
 	return cloudprovider.ErrNotSupported
 }
 

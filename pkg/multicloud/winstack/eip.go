@@ -107,7 +107,7 @@ func (s *SEip) GetAssociationType() string {
 	case "VM":
 		return api.EIP_ASSOCIATE_TYPE_SERVER
 	case "ROUTER":
-		return api.EIP_ASSOCIATE_TYPE_ROUTER
+		return api.EIP_ASSOCIATE_TYPE_ROUTETABLE
 
 	}
 	return ""

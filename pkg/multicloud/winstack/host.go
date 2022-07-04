@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
 
@@ -84,10 +85,6 @@ func (s *SHost) GetIVMById(id string) (cloudprovider.ICloudVM, error) {
 
 func (s *SHost) GetIWires() ([]cloudprovider.ICloudWire, error) {
 	return s.cluster.GetIWires()
-}
-
-func (s *SHost) GetIStorages() ([]cloudprovider.ICloudStorage, error) {
-	return s.cluster.GetIStorages()
 }
 
 func (s *SHost) GetIStorageById(id string) (cloudprovider.ICloudStorage, error) {

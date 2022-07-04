@@ -16,6 +16,7 @@ package winstack
 
 import (
 	"strconv"
+
 	"yunion.io/x/jsonutils"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
@@ -46,14 +47,17 @@ type SStorage struct {
 
 	cluster *SCluster
 
-	Id           string
-	Name         string
-	Status       int
-	StorageType  int
-	Capacity     int64
-	Allocation   int64
-	UsedCapacity int64
-	Type         TStorageType
+	Id                    string
+	Name                  string
+	Status                int
+	StorageType           int
+	Capacity              int64
+	Allocation            int64
+	UsedCapacity          int64
+	Type                  TStorageType
+	SpHostRelationRspList []struct {
+		HostId string
+	}
 }
 
 func (s *SStorage) GetIStoragecache() cloudprovider.ICloudStoragecache {
@@ -180,7 +184,7 @@ func (s *SCluster) GetIStorages() ([]cloudprovider.ICloudStorage, error) {
 	return ret, nil
 }
 
-func (s *SRegion) GetStorages(id string, start, size int) ([]SStorage, error) {
+func (s *SRegion) GetStorages(id string, hostId string, start, size int) ([]SStorage, error) {
 	query := make(map[string]string)
 	if size <= 0 {
 		size = 10
@@ -190,6 +194,10 @@ func (s *SRegion) GetStorages(id string, start, size int) ([]SStorage, error) {
 	}
 	if len(id) > 0 {
 		query["id"] = id
+		start = 0
+	}
+	if len(hostId) > 0 {
+		query["hostId"] = hostId
 		start = 0
 	}
 	query["start"] = strconv.Itoa(start)
@@ -206,7 +214,7 @@ func (s *SRegion) getStorages() ([]SStorage, error) {
 	var ret []SStorage
 	start, size := 1, 10
 	for {
-		storages, err := s.GetStorages("", start, size)
+		storages, err := s.GetStorages("", "", start, size)
 		if err != nil {
 			return nil, err
 		}
@@ -221,8 +229,25 @@ func (s *SRegion) getStorages() ([]SStorage, error) {
 	return ret, nil
 }
 
+func (s *SHost) GetIStorages() ([]cloudprovider.ICloudStorage, error) {
+	var ret []cloudprovider.ICloudStorage
+	storages, err := s.cluster.region.getStorages()
+	if err != nil {
+		return nil, err
+	}
+	for i := range storages {
+		for j, _ := range storages[i].SpHostRelationRspList {
+			if storages[i].SpHostRelationRspList[j].HostId == s.Id {
+				storages[i].cluster = s.cluster
+				ret = append(ret, &storages[i])
+			}
+		}
+	}
+	return ret, nil
+}
+
 func (s *SRegion) getStorage(id string) (*SStorage, error) {
-	storages, err := s.GetStorages(id, 0, 0)
+	storages, err := s.GetStorages(id, "", 0, 0)
 	if err != nil {
 		return nil, err
 	}

@@ -160,7 +160,7 @@ func (s *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
-func (s *SRouteTable) AddRouteInterface(routeInterface cloudprovider.RouteInterface) error {
+func (s *SRouteTable) CreateAssociations(routeInterface cloudprovider.RouteInterface) error {
 	URL := fmt.Sprintf(ROUTE_INTERFACE_CREATE_URL, s.router.Id)
 	body := make(map[string]string)
 	body["project_Id"] = routeInterface.NetworkId

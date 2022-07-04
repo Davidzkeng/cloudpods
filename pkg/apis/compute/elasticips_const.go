@@ -26,7 +26,8 @@ const (
 	EIP_ASSOCIATE_TYPE_NAT_GATEWAY  = "natgateway"
 	EIP_ASSOCIATE_TYPE_LOADBALANCER = "loadbalancer"
 	EIP_ASSOCIATE_TYPE_UNKNOWN      = "unknown"
-	EIP_ASSOCIATE_TYPE_ROUTER       = "router"
+
+	EIP_ASSOCIATE_TYPE_ROUTETABLE = "routetable"
 
 	EIP_ASSOCIATE_TYPE_INSTANCE_GROUP = "instancegroup"
 

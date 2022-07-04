@@ -138,6 +138,6 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
-func (self *SRouteTable) AddRouteInterface(route cloudprovider.RouteInterface) error {
+func (self *SRouteTable) CreateAssociations(route cloudprovider.RouteInterface) error {
 	return cloudprovider.ErrNotSupported
 }
