@@ -45,6 +45,7 @@ type RouteSet struct {
 	NextHop     string // route next hop (ip or id)
 }
 
-type RouteInterface struct {
+type RouteTableCreateOptions struct {
 	NetworkId string
+	Name      string
 }

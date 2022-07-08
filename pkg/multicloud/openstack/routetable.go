@@ -138,6 +138,17 @@ func (self *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
-func (self *SRouteTable) CreateAssociations(route cloudprovider.RouteInterface) error {
+func (self *SRouteTable) CreateAssociations(route cloudprovider.RouteTableAssociation) error {
 	return cloudprovider.ErrNotSupported
+}
+
+func (self *SRouteTable) Delete() error {
+	return cloudprovider.ErrNotSupported
+}
+
+func (self *SRouteTable) GetNetworkId() string {
+	return ""
+}
+func (self *SRouteTable) GetIEips() ([]cloudprovider.ICloudEIP, error) {
+	return []cloudprovider.ICloudEIP{}, nil
 }

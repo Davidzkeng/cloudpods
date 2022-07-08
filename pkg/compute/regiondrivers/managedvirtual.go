@@ -1231,7 +1231,6 @@ func (self *SManagedVirtualizationRegionDriver) RequestCreateVpc(ctx context.Con
 			return nil, errors.Wrap(err, "cloudprovider.WaitStatus")
 		}
 
-		//todo: 云宏外部网络
 		if ivpc.IsSupportSetExternalAccess() && vpc.ExternalAccessMode == api.VPC_EXTERNAL_ACCESS_MODE_EIP {
 			igw, err := iregion.CreateInternetGateway()
 			if err != nil {

@@ -17,6 +17,8 @@ package winstack
 import (
 	"fmt"
 
+	"yunion.io/x/log"
+
 	"github.com/pkg/errors"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
@@ -65,7 +67,7 @@ func (s *SRouteEntry) GetCidr() string {
 }
 
 func (s *SRouteEntry) GetNextHopType() string {
-	return s.Nexthop
+	return api.NEXT_HOP_TYPE_INTERNET
 }
 
 func (s *SRouteEntry) GetNextHop() string {
@@ -131,6 +133,20 @@ func (s *SRouteTable) Refresh() error {
 	return nil
 }
 
+func (s *SRouteTable) GetNetworkId() string {
+	return s.router.ExternalGatewayInfo.NetworkId
+}
+
+func (s *SRouteTable) GetIEips() ([]cloudprovider.ICloudEIP, error) {
+	var ret []cloudprovider.ICloudEIP
+	eips, err := s.vpc.region.GetEipByBindId(s.router.Id)
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, eips)
+	return ret, nil
+}
+
 func (s *SRouteTable) GetAssociations() []cloudprovider.RouteTableAssociation {
 	var ret []cloudprovider.RouteTableAssociation
 	networks, err := s.vpc.region.GetRouterSubnet(s.router.Id)
@@ -149,7 +165,12 @@ func (s *SRouteTable) GetAssociations() []cloudprovider.RouteTableAssociation {
 }
 
 func (s *SRouteTable) CreateRoute(route cloudprovider.RouteSet) error {
-	return cloudprovider.ErrNotSupported
+	var entries []SRouteEntry
+	entries = append(entries, SRouteEntry{
+		Destination: route.Destination,
+		Nexthop:     route.NextHop,
+	})
+	return s.vpc.region.AddRouterExtraRoute(s.router.Id, entries)
 }
 
 func (s *SRouteTable) UpdateRoute(route cloudprovider.RouteSet) error {
@@ -157,15 +178,29 @@ func (s *SRouteTable) UpdateRoute(route cloudprovider.RouteSet) error {
 }
 
 func (s *SRouteTable) RemoveRoute(route cloudprovider.RouteSet) error {
-	return cloudprovider.ErrNotSupported
+	var entries []SRouteEntry
+	entries = append(entries, SRouteEntry{
+		Destination: route.Destination,
+		Nexthop:     route.NextHop,
+	})
+	return s.vpc.region.RemoveRouterExtraRoute(s.router.Id, entries)
 }
 
-func (s *SRouteTable) CreateAssociations(routeInterface cloudprovider.RouteInterface) error {
+func (s *SRouteTable) CreateAssociations(routeInterface cloudprovider.RouteTableAssociation) error {
 	URL := fmt.Sprintf(ROUTE_INTERFACE_CREATE_URL, s.router.Id)
 	body := make(map[string]string)
-	body["project_Id"] = routeInterface.NetworkId
-	_, err := s.vpc.region.client.invokePUT(URL, nil, nil, body)
+	network, err := s.vpc.region.GetNetworkById(s.vpc.Id, routeInterface.AssociatedResourceId)
+	if err != nil {
+		return err
+	}
+	body["project_Id"] = network.Id
+	body["subnet_id"] = network.SubNetId
+	_, err = s.vpc.region.client.invokePUT(URL, nil, nil, body)
 	return err
+}
+
+func (s *SRouteTable) Delete() error {
+	return s.vpc.region.DeleteRouter(s.vpc.Id, s.router.Id)
 }
 
 func (s *SVpc) GetIRouteTables() ([]cloudprovider.ICloudRouteTable, error) {
@@ -180,11 +215,11 @@ func (s *SVpc) GetIRouteTables() ([]cloudprovider.ICloudRouteTable, error) {
 			continue
 		}
 		if routers[i].ProjectId == s.GetId() {
-			var routerTable SRouteTable
-			routerTable.entries = routers[i].Routes
-			routerTable.router = &routers[i]
-			routerTable.vpc = s
-			routeTables = append(routeTables, routerTable)
+			var routeTable SRouteTable
+			routeTable.entries = routers[i].Routes
+			routeTable.router = &routers[i]
+			routeTable.vpc = s
+			routeTables = append(routeTables, routeTable)
 			break
 		}
 	}
@@ -207,4 +242,17 @@ func (s *SVpc) GetIRouteTableById(id string) (cloudprovider.ICloudRouteTable, er
 		}
 	}
 	return nil, errors.Wrapf(cloudprovider.ErrNotFound, id)
+}
+
+func (s *SVpc) CreateIRouteTable(opts *cloudprovider.RouteTableCreateOptions) (cloudprovider.ICloudRouteTable, error) {
+	var routerTable SRouteTable
+	log.Errorf("tttttt:%+v", opts)
+	router, err := s.region.CreateRouter(s.Id, opts.Name, opts.NetworkId)
+	if err != nil {
+		return nil, err
+	}
+	routerTable.entries = router.Routes
+	routerTable.router = router
+	routerTable.vpc = s
+	return &routerTable, nil
 }

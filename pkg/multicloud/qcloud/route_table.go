@@ -174,8 +174,20 @@ func (self *SRouteTableSet) RemoveRoute(route cloudprovider.RouteSet) error {
 	return cloudprovider.ErrNotSupported
 }
 
-func (self *SRouteTableSet) CreateAssociations(route cloudprovider.RouteInterface) error {
+func (self *SRouteTableSet) CreateAssociations(route cloudprovider.RouteTableAssociation) error {
 	return cloudprovider.ErrNotSupported
+}
+
+func (self *SRouteTableSet) Delete() error {
+	return cloudprovider.ErrNotSupported
+}
+
+func (self *SRouteTableSet) GetNetworkId() string {
+	return ""
+}
+
+func (self *SRouteTableSet) GetIEips() ([]cloudprovider.ICloudEIP, error) {
+	return []cloudprovider.ICloudEIP{}, nil
 }
 
 func (self *SRouteSet) GetId() string {

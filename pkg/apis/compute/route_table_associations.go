@@ -21,3 +21,26 @@ type RouteTableAssociationListInput struct {
 	apis.ExternalizedResourceBaseListInput
 	RouteTableFilterList
 }
+
+type RouteTableAssociationType string
+
+const (
+	RouteTableAssociaToRouter = RouteTableAssociationType("Router")
+	RouteTableAssociaToSubnet = RouteTableAssociationType("Subnet")
+)
+
+const (
+	ROUTE_TABLE_ASSOCIATION_PENDING    = "pending"
+	ROUTE_TABLE_ASSOCIATION_CREATEFAIL = "create_fail"
+	ROUTE_TABLE_ASSOCIATION_AVALIABLE  = "available"
+)
+
+type RouteTableAssociationCreateInput struct {
+	apis.StatusStandaloneResourceCreateInput
+
+	RouteTableId            string
+	AssociationId           string
+	AssociationType         RouteTableAssociationType
+	AssociatedResourceId    string
+	ExtAssociatedResourceId string
+}

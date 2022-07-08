@@ -87,6 +87,9 @@ func (self *EipDissociateTask) OnInit(ctx context.Context, obj db.IStandaloneMod
 		} else if grp := eip.GetAssociateInstanceGroup(); grp != nil {
 			model = grp
 			logOp = logclient.ACT_INSTANCE_GROUP_DISSOCIATE
+		} else if routeTable := eip.GetAssociateRouteTable(); routeTable != nil {
+			model = routeTable
+			logOp = logclient.ACT_ROUTETABLE_DISSOCIATE
 		} else {
 			self.TaskFail(ctx, eip, jsonutils.NewString("unsupported associate type"), nil)
 			return

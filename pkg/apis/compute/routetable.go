@@ -28,9 +28,13 @@ import (
 )
 
 const (
+	ROUTE_TABLE_PENDING      = "pending"
 	ROUTE_TABLE_UPDATING     = "updating"
 	ROUTE_TABLE_UPDATEFAILED = "update_falied"
 	ROUTE_TABLE_AVAILABLE    = "available"
+	ROUTE_TABLE_CREATEFAIL   = "create_fail"
+	ROUTE_TABLE_DELETING     = "deleting"
+	ROUTE_TABLE_DELETEFAIL   = "delete_fail"
 	ROUTE_TABLE_UNKNOWN      = "unknown"
 )
 

@@ -153,10 +153,36 @@ func TestSRegion_GetEips(t *testing.T) {
 	}
 }
 
-func TestSRegion_GetRouterNetworkId(t *testing.T) {
-	ids, err := region.GetRouterNetworkId("419c5191-8329-447a-8663-9df791733d16")
+func TestSRegion_RemoveRouterExtraRoute(t *testing.T) {
+	entry := []SRouteEntry{
+		{
+			Destination: "0.0.0.0/0",
+			Nexthop:     "10.252.226.126",
+		},
+	}
+	err := region.RemoveRouterExtraRoute("a04aaf72-f356-418d-8fd8-55a6a476b4af", entry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(ids)
+}
+
+func TestSRegion_AddRouterExtraRoute(t *testing.T) {
+	entry := []SRouteEntry{
+		{
+			Destination: "0.0.0.0/0",
+			Nexthop:     "10.252.226.126",
+		},
+	}
+	err := region.AddRouterExtraRoute("a04aaf72-f356-418d-8fd8-55a6a476b4af", entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSregion_GetEipByExtNetworkId(t *testing.T) {
+	eip, err := region.GetEipByBindId("f242b419-370c-4068-89db-31003ace1aae")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", eip)
 }

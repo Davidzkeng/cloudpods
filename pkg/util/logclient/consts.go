@@ -169,6 +169,8 @@ const (
 
 	ACT_INSTANCE_GROUP_DISSOCIATE = "instancegroup_dissociate"
 
+	ACT_ROUTETABLE_DISSOCIATE = "routetable_dissociate"
+
 	ACT_PREPARE = "prepare"
 	ACT_PROBE   = "probe"
 

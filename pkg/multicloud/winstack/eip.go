@@ -251,6 +251,19 @@ func (s *SRegion) getEipByIp(ip string) (*SEip, error) {
 	return nil, errors.Wrapf(cloudprovider.ErrNotFound, ip)
 }
 
+func (s *SRegion) GetEipByBindId(bindId string) (*SEip, error) {
+	eips, err := s.getEips()
+	if err != nil {
+		return nil, err
+	}
+	for i := range eips {
+		if eips[i].BindDevId == bindId {
+			return &eips[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, bindId)
+}
+
 func (s *SRegion) GetEips(ip string, start, size int) ([]SEip, error) {
 	query := make(map[string]string)
 	if size <= 0 {
@@ -263,6 +276,7 @@ func (s *SRegion) GetEips(ip string, start, size int) ([]SEip, error) {
 		query["ip"] = ip
 		start = 0
 	}
+
 	query["start"] = strconv.Itoa(start)
 	query["size"] = strconv.Itoa(size)
 	resp, err := s.client.invokeGET(FLOAT_IP_LIST_URL, nil, query)

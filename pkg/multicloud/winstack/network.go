@@ -173,6 +173,19 @@ func (s *SRegion) GetNetworks(vpcId string) ([]SNetwork, error) {
 	return networks, resp.Unmarshal(&networks)
 }
 
+func (s *SRegion) GetNetworkById(vpcId string, networkId string) (*SNetwork, error) {
+	networks, err := s.GetNetworks(vpcId)
+	if err != nil {
+		return nil, err
+	}
+	for i := range networks {
+		if networks[i].Id == networkId {
+			return &networks[i], nil
+		}
+	}
+	return nil, errors.Wrapf(cloudprovider.ErrNotFound, networkId)
+}
+
 func (s *SRegion) CreateNetwork(vpcId, name string, cidr string, desc string) (*SNetwork, error) {
 	URL := fmt.Sprintf(NETWORK_CREATE_URL, vpcId)
 	gateway, err := getDefaultGateWay(cidr)

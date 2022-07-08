@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
+
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
@@ -60,8 +62,9 @@ type SRouteTable struct {
 	db.SExternalizedResourceBase
 	SVpcResourceBase `create:"required"`
 
-	Type   string       `width:"16" charset:"ascii" nullable:"false" list:"user"`
-	Routes *api.SRoutes `list:"user" update:"user" create:"required"`
+	Type      string       `width:"16" charset:"ascii" nullable:"false" list:"user"`
+	NetworkId string       `width:"36" charset:"ascii" nullable:"false" list:"user" create:"optional" json:"network_id"`
+	Routes    *api.SRoutes `list:"user" update:"user" create:"required"`
 }
 
 // VPC虚拟路由表列表
@@ -166,25 +169,47 @@ func (man *SRouteTableManager) ValidateCreateData(
 	return input, nil
 }
 
-func (rt *SRouteTable) PerformPurge(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	err := rt.ValidateDeleteCondition(ctx, nil)
+func (self *SRouteTable) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
+	defer func() {
+		self.SStatusInfrasResourceBase.PostCreate(ctx, userCred, ownerId, query, data)
+	}()
+	task, err := taskman.TaskManager.NewTask(ctx, "RouteTableCreateTask", self, userCred, nil, "", "", nil)
+	if err != nil {
+		self.SetStatus(userCred, api.ROUTE_TABLE_CREATEFAIL, errors.Wrapf(err, "NewTask").Error())
+		return
+	}
+	task.ScheduleRun(nil)
+}
+
+func (self *SRouteTable) CustomizeDelete(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) error {
+	task, err := taskman.TaskManager.NewTask(ctx, "RouteTableDeleteTask", self, userCred, nil, "", "", nil)
+	if err != nil {
+		log.Errorf("Start RouteTableDeleteTask fail %s", err)
+		return err
+	}
+	task.ScheduleRun(nil)
+	return nil
+}
+
+func (self *SRouteTable) PerformPurge(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	err := self.ValidateDeleteCondition(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	provider := rt.GetCloudprovider()
+	provider := self.GetCloudprovider()
 	if provider != nil {
 		if provider.GetEnabled() {
 			return nil, httperrors.NewInvalidStatusError("Cannot purge route_table on enabled cloud provider")
 		}
 	}
-	err = rt.RealDelete(ctx, userCred)
+	err = self.RealDelete(ctx, userCred)
 	return nil, err
 }
 
-func (rt *SRouteTable) RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error {
-	routeSets, err := rt.GetRouteTableRouteSets()
+func (self *SRouteTable) RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error {
+	routeSets, err := self.GetRouteTableRouteSets()
 	if err != nil {
-		return errors.Wrapf(err, "GetRouteTableRouteSets for %s(%s)", rt.Name, rt.Id)
+		return errors.Wrapf(err, "GetRouteTableRouteSets for %s(%s)", self.Name, self.Id)
 	}
 	for i := range routeSets {
 		err = routeSets[i].RealDelete(ctx, userCred)
@@ -193,9 +218,9 @@ func (rt *SRouteTable) RealDelete(ctx context.Context, userCred mcclient.TokenCr
 		}
 	}
 
-	associations, err := rt.GetRouteTableAssociations()
+	associations, err := self.GetRouteTableAssociations()
 	if err != nil {
-		return errors.Wrapf(err, "GetRouteTableAssociations for %s(%s)", rt.Name, rt.Id)
+		return errors.Wrapf(err, "GetRouteTableAssociations for %s(%s)", self.Name, self.Id)
 	}
 	for i := range associations {
 		err = associations[i].RealDelete(ctx, userCred)
@@ -204,10 +229,10 @@ func (rt *SRouteTable) RealDelete(ctx context.Context, userCred mcclient.TokenCr
 		}
 	}
 
-	return rt.SStatusInfrasResourceBase.Delete(ctx, userCred)
+	return self.SStatusInfrasResourceBase.Delete(ctx, userCred)
 }
 
-func (rt *SRouteTable) ValidateUpdateData(
+func (self *SRouteTable) ValidateUpdateData(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	query jsonutils.JSONObject,
@@ -217,7 +242,7 @@ func (rt *SRouteTable) ValidateUpdateData(
 	if err != nil {
 		return input, errors.Wrap(err, "RouteTableManager.validateRoutes")
 	}
-	input.StatusInfrasResourceBaseUpdateInput, err = rt.SStatusInfrasResourceBase.ValidateUpdateData(ctx, userCred, query, input.StatusInfrasResourceBaseUpdateInput)
+	input.StatusInfrasResourceBaseUpdateInput, err = self.SStatusInfrasResourceBase.ValidateUpdateData(ctx, userCred, query, input.StatusInfrasResourceBaseUpdateInput)
 	if err != nil {
 		return input, errors.Wrap(err, "SStatusInfrasResourceBase.ValidateUpdateData")
 	}
@@ -226,10 +251,10 @@ func (rt *SRouteTable) ValidateUpdateData(
 
 // PerformAddRoutes patches acl entries by adding then deleting the specified acls.
 // This is intended mainly for command line operations.
-func (rt *SRouteTable) PerformAddRoutes(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
+func (self *SRouteTable) PerformAddRoutes(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
 	var routes api.SRoutes
-	if rt.Routes != nil {
-		routes_ := gotypes.DeepCopy(rt.Routes).(*api.SRoutes)
+	if self.Routes != nil {
+		routes_ := gotypes.DeepCopy(self.Routes).(*api.SRoutes)
 		routes = *routes_
 	}
 	{
@@ -253,8 +278,8 @@ func (rt *SRouteTable) PerformAddRoutes(ctx context.Context, userCred mcclient.T
 			}
 		}
 	}
-	_, err := db.Update(rt, func() error {
-		rt.Routes = &routes
+	_, err := db.Update(self, func() error {
+		self.Routes = &routes
 		return nil
 	})
 	if err != nil {
@@ -263,10 +288,10 @@ func (rt *SRouteTable) PerformAddRoutes(ctx context.Context, userCred mcclient.T
 	return nil, nil
 }
 
-func (rt *SRouteTable) PerformDelRoutes(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
+func (self *SRouteTable) PerformDelRoutes(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
 	var routes api.SRoutes
-	if rt.Routes != nil {
-		routes_ := gotypes.DeepCopy(rt.Routes).(*api.SRoutes)
+	if self.Routes != nil {
+		routes_ := gotypes.DeepCopy(self.Routes).(*api.SRoutes)
 		routes = *routes_
 	}
 	{
@@ -288,8 +313,8 @@ func (rt *SRouteTable) PerformDelRoutes(ctx context.Context, userCred mcclient.T
 			}
 		}
 	}
-	_, err := db.Update(rt, func() error {
-		rt.Routes = &routes
+	_, err := db.Update(self, func() error {
+		self.Routes = &routes
 		return nil
 	})
 	if err != nil {
@@ -443,6 +468,13 @@ func (man *SRouteTableManager) newRouteTableFromCloud(ctx context.Context, userC
 		}
 		routeTable.Name = newName
 	}
+	{
+		network, err := db.FetchByExternalId(NetworkManager, cloudRouteTable.GetNetworkId())
+		if err != nil {
+			return nil, err
+		}
+		routeTable.NetworkId = network.GetId()
+	}
 	// routeTable.ManagerId = vpc.ManagerId
 	routeTable.Status = cloudRouteTable.GetStatus()
 	routeTable.ExternalId = cloudRouteTable.GetGlobalId()
@@ -513,6 +545,8 @@ func (self *SRouteTable) SyncWithCloudRouteTable(ctx context.Context, userCred m
 		self.VpcId = vpc.Id
 		self.Type = routeTable.Type
 		self.Routes = routeTable.Routes
+		self.ExternalId = routeTable.GetExternalId()
+		self.NetworkId = routeTable.NetworkId
 		return nil
 	})
 	if err != nil {
@@ -713,4 +747,79 @@ func (self *SRouteTable) GetICloudRouteTable(ctx context.Context) (cloudprovider
 		return nil, errors.Wrapf(err, "ivpc.GetIRouteTableById(%s)", self.ExternalId)
 	}
 	return iRouteTable, nil
+}
+
+func (self *SRouteTable) SyncRouteTableEips(ctx context.Context, userCred mcclient.TokenCredential, extEips []cloudprovider.ICloudEIP, provider *SCloudprovider) compare.SyncResult {
+	log.Errorf("tableId:%v,extEips:%v", self.GetId(), extEips[0].GetId())
+	lockman.LockRawObject(ctx, "elasticip", self.Id)
+	defer lockman.ReleaseRawObject(ctx, "elasticip", self.Id)
+
+	result := compare.SyncResult{}
+
+	dbEips, err := self.GetEips()
+	if err != nil {
+		result.AddError(err)
+		return result
+	}
+
+	removed := make([]SElasticip, 0)
+	commondb := make([]SElasticip, 0)
+	commonext := make([]cloudprovider.ICloudEIP, 0)
+	added := make([]cloudprovider.ICloudEIP, 0)
+	if err := compare.CompareSets(dbEips, extEips, &removed, &commondb, &commonext, &added); err != nil {
+		result.Error(err)
+		return result
+	}
+	for i := 0; i < len(removed); i += 1 {
+		err := removed[i].Dissociate(ctx, userCred)
+		if err != nil {
+			result.DeleteError(err)
+			continue
+		}
+		result.Delete()
+	}
+
+	for i := 0; i < len(commondb); i += 1 {
+		err := commondb[i].SyncInstanceWithCloudEip(ctx, userCred, commonext[i])
+		if err != nil {
+			result.UpdateError(err)
+			continue
+		}
+		syncMetadata(ctx, userCred, &commondb[i], commonext[i])
+		result.Update()
+	}
+
+	for i := 0; i < len(added); i += 1 {
+		region, _ := self.GetRegion()
+		neip, err := ElasticipManager.getEipByExtEip(ctx, userCred, added[i], provider, region, provider.GetOwnerId())
+		if err != nil {
+			result.AddError(err)
+			continue
+		}
+		if len(neip.AssociateId) > 0 && neip.AssociateId != self.Id {
+			err = neip.Dissociate(ctx, userCred)
+			if err != nil {
+				result.AddError(err)
+				continue
+			}
+		}
+		err = neip.AssociateRouteTable(ctx, userCred, self)
+		if err != nil {
+			result.AddError(err)
+			continue
+		}
+		result.Add()
+	}
+
+	return result
+}
+
+func (self *SRouteTable) GetEips() ([]SElasticip, error) {
+	q := ElasticipManager.Query().Equals("associate_id", self.Id)
+	eips := []SElasticip{}
+	err := db.FetchModelObjects(ElasticipManager, q, &eips)
+	if err != nil {
+		return nil, errors.Wrapf(err, "db.FetchModelObjects")
+	}
+	return eips, nil
 }

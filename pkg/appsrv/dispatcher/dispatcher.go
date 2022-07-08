@@ -320,6 +320,7 @@ func handleCreate(ctx context.Context, w http.ResponseWriter, manager IModelDisp
 	count := int64(1)
 	var data jsonutils.JSONObject
 	var err error
+	log.Errorf("body:%+v", body)
 	if body != nil {
 		count, _ = body.Int("count")
 		data, err = body.Get(manager.Keyword())

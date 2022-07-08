@@ -56,8 +56,9 @@ func (opts *RoutesOptions) Params() (jsonutils.JSONObject, error) {
 }
 
 type RouteTableCreateOptions struct {
-	NAME string
-	Vpc  string `required:"true"`
+	NAME      string
+	Vpc       string `required:"true"`
+	NetworkId string `required:"true"`
 
 	RoutesOptions
 }

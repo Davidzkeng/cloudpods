@@ -454,6 +454,8 @@ func syncVpcRouteTables(ctx context.Context, userCred mcclient.TokenCredential, 
 			}
 			localRouteTables[i].SyncRouteTableRouteSets(ctx, userCred, remoteRouteTables[i], provider)
 			localRouteTables[i].SyncRouteTableAssociations(ctx, userCred, remoteRouteTables[i], provider)
+			eips, _ := remoteRouteTables[i].GetIEips()
+			localRouteTables[i].SyncRouteTableEips(ctx, userCred, eips, provider)
 		}()
 	}
 }

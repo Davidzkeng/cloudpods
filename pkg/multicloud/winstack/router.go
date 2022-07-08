@@ -17,9 +17,12 @@ package winstack
 import "fmt"
 
 const (
-	ROUTER_LIST_URL        = "/api/sdn/v2.0/routers"
-	ROUTER_CREATE_URL      = "/api/network/vpcs/%s/routers"
-	ROUTER_SUBNET_LIST_URL = "/api/sdn/v2.0/routers/%s/interfaces"
+	ROUTER_LIST_URL           = "/api/sdn/v2.0/routers"
+	ROUTER_CREATE_URL         = "/api/network/vpcs/%s/routers"
+	ROUTER_DELETE_URL         = "/api/network/vpcs/%s/routers/%s/delete"
+	ROUTER_SUBNET_LIST_URL    = "/api/sdn/v2.0/routers/%s/interfaces"
+	ROUTER_REMOVE_EXTRAROUTES = "/api/sdn/v2.0/routers/%s/remove_extraroutes"
+	ROUTER_ADD_EXTRAROUTES    = "/api/sdn/v2.0/routers/%s/add_extraroutes"
 )
 
 type SRouter struct {
@@ -76,4 +79,31 @@ func (s *SRegion) CreateRouter(vpcId string, name string, networkId string) (*SR
 	}
 	var ret SRouter
 	return &ret, resp.Unmarshal(&ret)
+}
+
+func (s *SRegion) DeleteRouter(vpcId string, routerId string) error {
+	URL := fmt.Sprintf(ROUTER_DELETE_URL, vpcId, routerId)
+	_, err := s.client.invokePOST(URL, nil, nil, nil)
+	return err
+}
+
+//{"router":{"routes":[{"destination":"0.0.0.0/0","nexthop":"10.252.226.126"}]}}
+func (s *SRegion) RemoveRouterExtraRoute(routerId string, entry []SRouteEntry) error {
+	URL := fmt.Sprintf(ROUTER_REMOVE_EXTRAROUTES, routerId)
+	routes := make(map[string][]SRouteEntry)
+	routes["routes"] = entry
+	body := make(map[string]interface{})
+	body["router"] = routes
+	_, err := s.client.invokePUT(URL, nil, nil, body)
+	return err
+}
+
+func (s *SRegion) AddRouterExtraRoute(routerId string, entry []SRouteEntry) error {
+	URL := fmt.Sprintf(ROUTER_ADD_EXTRAROUTES, routerId)
+	routes := make(map[string][]SRouteEntry)
+	routes["routes"] = entry
+	body := make(map[string]interface{})
+	body["router"] = routes
+	_, err := s.client.invokePUT(URL, nil, nil, body)
+	return err
 }

@@ -524,6 +524,7 @@ func (self *SElasticip) SyncInstanceWithCloudEip(ctx context.Context, userCred m
 		if err != nil {
 			return errors.Wrapf(err, "db.FetchByExternalIdAndManagerId %s %s", ext.GetAssociationType(), vmExtId)
 		}
+		log.Errorf("tttttt,associateInstance:%v,extRes:%v", ext.GetAssociationType(), extRes)
 		err = self.AssociateInstance(ctx, userCred, ext.GetAssociationType(), extRes.(db.IStatusStandaloneModel))
 		if err != nil {
 			return errors.Wrapf(err, "AssociateInstance")
@@ -716,6 +717,9 @@ func (self *SElasticip) IsAssociated() bool {
 	if self.GetAssociateNatGateway() != nil {
 		return true
 	}
+	if self.GetAssociateRouteTable() != nil {
+		return true
+	}
 	if self.GetAssociateInstanceGroup() != nil {
 		return true
 	}
@@ -789,6 +793,9 @@ func (self *SElasticip) GetAssociateResource() db.IModel {
 	}
 	if grp := self.GetAssociateInstanceGroup(); grp != nil {
 		return grp
+	}
+	if routeTable := self.GetAssociateRouteTable(); routeTable != nil {
+		return routeTable
 	}
 	return nil
 }

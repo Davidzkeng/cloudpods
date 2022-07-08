@@ -92,3 +92,7 @@ func (self *SVpc) GetGlobalVpcId() string {
 func (self *SVpc) GetICloudIPv6Gateways() ([]cloudprovider.ICloudIPv6Gateway, error) {
 	return nil, errors.Wrapf(cloudprovider.ErrNotImplemented, "GetICloudIPv6Gateways")
 }
+
+func (self *SVpc) CreateIRouteTable(opts *cloudprovider.RouteTableCreateOptions) (cloudprovider.ICloudRouteTable, error) {
+	return nil, errors.Wrapf(cloudprovider.ErrNotImplemented, "CreateIRouteTable")
+}

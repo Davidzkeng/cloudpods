@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
@@ -253,7 +254,7 @@ func (client *SWinStackClient) invokePOST(path string, header map[string]string,
 }
 
 func (client *SWinStackClient) invokePUT(path string, header map[string]string, query map[string]string, body interface{}) (jsonutils.JSONObject, error) {
-	return client.invoke(httputils.POST, path, header, query, body)
+	return client.invoke(httputils.PUT, path, header, query, body)
 }
 
 func (client *SWinStackClient) invokePATCH(path string, header map[string]string, query map[string]string) (jsonutils.JSONObject, error) {

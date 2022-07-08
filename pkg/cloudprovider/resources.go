@@ -474,13 +474,17 @@ type ICloudRouteTable interface {
 	GetRegionId() string
 	GetVpcId() string
 	GetType() RouteTableType
+	GetNetworkId() string
+	GetIEips() ([]ICloudEIP, error)
 	GetIRoutes() ([]ICloudRoute, error)
 
 	CreateRoute(route RouteSet) error
 	UpdateRoute(route RouteSet) error
 	RemoveRoute(route RouteSet) error
 
-	CreateAssociations(routeInterface RouteInterface) error
+	CreateAssociations(association RouteTableAssociation) error
+
+	Delete() error
 }
 
 type ICloudRoute interface {
@@ -597,6 +601,8 @@ type ICloudVpc interface {
 	ProposeJoinICloudInterVpcNetwork(opts *SVpcJointInterVpcNetworkOption) error
 
 	GetICloudIPv6Gateways() ([]ICloudIPv6Gateway, error)
+
+	CreateIRouteTable(opts *RouteTableCreateOptions) (ICloudRouteTable, error)
 }
 
 type ICloudInternetGateway interface {
