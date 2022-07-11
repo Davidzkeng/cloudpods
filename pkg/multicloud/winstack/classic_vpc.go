@@ -78,14 +78,23 @@ func (s *SClassicVpc) GetStatus() string {
 	return api.VPC_STATUS_AVAILABLE
 }
 
+func (s *SClassicVpc) GetExternalAccessMode() string {
+	return api.VPC_EXTERNAL_ACCESS_MODE_DISTGW
+}
+
+func (s *SClassicVpc) GetIsExternalNet() bool {
+	return true
+}
+
 func (s *SRegion) getClassicVpcs() ([]SClassicVpc, error) {
-	var result []SClassicVpc
-	result = append(result, SClassicVpc{
-		Id:     "default",
-		Name:   "Default(外部网络)",
-		region: s,
-	})
-	return result, nil
+	query := make(map[string]string)
+	query["type"] = "1"
+	resp, err := s.client.invokeGET(CLASSIC_NETWORK_LIST_URL, nil, query)
+	if err != nil {
+		return nil, err
+	}
+	var ret []SClassicVpc
+	return ret, resp.Unmarshal(&ret)
 }
 
 func (s *SRegion) GetClassicVpcById(id string) (*SClassicVpc, error) {

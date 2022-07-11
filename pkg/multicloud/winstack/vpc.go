@@ -135,7 +135,7 @@ func (s *SRegion) GetIVpcs() ([]cloudprovider.ICloudVpc, error) {
 		vpcs[i].region = s
 		ret = append(ret, &vpcs[i])
 	}
-	//增加一个default vpc用来管理外部网络
+	//增加一个id为default vpc用来标识云宏的网络管理
 	classicVpcs, err := s.getClassicVpcs()
 	if err != nil {
 		return nil, errors.Wrapf(err, "ListClassicVpcs")

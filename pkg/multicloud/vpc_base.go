@@ -96,3 +96,7 @@ func (self *SVpc) GetICloudIPv6Gateways() ([]cloudprovider.ICloudIPv6Gateway, er
 func (self *SVpc) CreateIRouteTable(opts *cloudprovider.RouteTableCreateOptions) (cloudprovider.ICloudRouteTable, error) {
 	return nil, errors.Wrapf(cloudprovider.ErrNotImplemented, "CreateIRouteTable")
 }
+
+func (self *SVpc) GetIsExternalNet() bool {
+	return false
+}

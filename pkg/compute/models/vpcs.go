@@ -92,6 +92,9 @@ type SVpc struct {
 
 	// Can it be connected directly
 	Direct bool `default:"false" list:"user" update:"user"`
+
+	//是否为外部vpc
+	IsExternalNet bool `default:"false" list:"user" update:"user"`
 }
 
 func (manager *SVpcManager) GetContextManagers() [][]db.IModelManager {
@@ -529,6 +532,7 @@ func (self *SVpc) SyncWithCloudVpc(ctx context.Context, userCred mcclient.TokenC
 		self.CidrBlock = extVPC.GetCidrBlock()
 		self.IsDefault = extVPC.GetIsDefault()
 		self.ExternalId = extVPC.GetGlobalId()
+		self.IsExternalNet = extVPC.GetIsExternalNet()
 
 		self.IsEmulated = extVPC.IsEmulated()
 		self.ExternalAccessMode = extVPC.GetExternalAccessMode()
@@ -574,6 +578,7 @@ func (manager *SVpcManager) newFromCloudVpc(ctx context.Context, userCred mcclie
 	vpc.IsDefault = extVPC.GetIsDefault()
 	vpc.CidrBlock = extVPC.GetCidrBlock()
 	vpc.ExternalAccessMode = extVPC.GetExternalAccessMode()
+	vpc.IsExternalNet = extVPC.GetIsExternalNet()
 	vpc.CloudregionId = region.Id
 	vpc.ManagerId = provider.Id
 	if createdAt := extVPC.GetCreatedAt(); !createdAt.IsZero() {

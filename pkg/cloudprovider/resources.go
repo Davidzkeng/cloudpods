@@ -603,6 +603,8 @@ type ICloudVpc interface {
 	GetICloudIPv6Gateways() ([]ICloudIPv6Gateway, error)
 
 	CreateIRouteTable(opts *RouteTableCreateOptions) (ICloudRouteTable, error)
+
+	GetIsExternalNet() bool
 }
 
 type ICloudInternetGateway interface {
