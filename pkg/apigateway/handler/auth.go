@@ -40,6 +40,7 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	compute_modules "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 	modules "yunion.io/x/onecloud/pkg/mcclient/modules/identity"
+	yunionconf_modules "yunion.io/x/onecloud/pkg/mcclient/modules/yunionconf"
 	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/onecloud/pkg/util/logclient"
 	"yunion.io/x/onecloud/pkg/util/netutils2"
@@ -89,6 +90,7 @@ func (h *AuthHandlers) AddMethods() {
 		NewHP(h.handleSsoLogin, "ssologin"),
 		NewHP(h.handleIdpInitSsoLogin, "ssologin", "<idp_id>"),
 		NewHP(handleOIDCToken, "oidc", "token"),
+		NewHP(h.restPlan, "reset", "plan"),
 	)
 
 	// auth middleware handler
@@ -1292,4 +1294,50 @@ func decodePassword(passwd string) string {
 		passwd = string(decPasswd)
 	}
 	return passwd
+}
+
+func (h *AuthHandlers) restPlan(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	resp, err := h.PutResetPlan(ctx, w, req)
+	if err != nil {
+		httperrors.GeneralServerError(ctx, w, err)
+		return
+	}
+	appsrv.SendJSON(w, jsonutils.Marshal(resp))
+}
+
+type ResetPlan struct {
+	Data  []jsonutils.JSONObject
+	Total int `json:"total"`
+}
+
+func (h *AuthHandlers) PutResetPlan(ctx context.Context, w http.ResponseWriter, req *http.Request) (ResetPlan, error) {
+	var resetdata ResetPlan
+	_, query, _ := appsrv.FetchEnv(ctx, w, req)
+	user_id, _ := query.GetString("id")
+	var returnjson []jsonutils.JSONObject
+	adminToken := auth.AdminCredential()
+	if adminToken == nil {
+		return resetdata, errors.Error("failed to get admin credential")
+	}
+	regions := adminToken.GetRegions()
+	if len(regions) == 0 {
+		return resetdata, errors.Error("region is empty")
+	}
+	s := auth.GetAdminSession(ctx, regions[0], "")
+	params := jsonutils.NewDict()
+	params.Add(jsonutils.NewString("user"), "namespace")
+	params.Add(jsonutils.NewString("system"), "scope")
+	if len(user_id) > 0 {
+		params.Add(jsonutils.NewString(user_id), "namespace_id")
+	}
+	ds, _ := yunionconf_modules.Parameters.List(s, params)
+	paramsdata := ds.Data
+	for _, value := range paramsdata {
+		id, _ := value.GetString("id")
+		delete_data, _ := yunionconf_modules.Parameters.Delete(s, id, value)
+		returnjson = append(returnjson, delete_data)
+	}
+	resetdata.Data = returnjson
+	resetdata.Total = len(returnjson)
+	return resetdata, nil
 }
