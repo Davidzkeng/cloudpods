@@ -117,6 +117,8 @@ type ServerListInput struct {
 
 	// 是否调度到宿主机上
 	WithHost *bool `json:"with_host"`
+
+	Id string `json:"id"`
 }
 
 func (input *ServerListInput) AfterUnmarshal() {

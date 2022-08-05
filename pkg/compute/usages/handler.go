@@ -634,7 +634,50 @@ func StorageUsage(
 		pendingDeleted, includeSystem,
 		true,
 		policyResult,
+		"",
+		"",
 	)
+
+	result_ssd := models.StorageManager.TotalCapacity(
+		rangeObjs,
+		hostTypes, resourceTypes,
+		providers, brands, cloudEnv,
+		scope, ownerId,
+		pendingDeleted, includeSystem,
+		true,
+		policyResult,
+		"ssd",
+		"system",
+	)
+	if result_ssd.Capacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_capacity")] = result_ssd.Capacity
+	}
+
+	if result_ssd.UsedCapacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_capacity_used")] = result_ssd.UsedCapacity
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_capacity_no_used")] = result_ssd.Capacity - result_ssd.UsedCapacity
+	}
+
+	result_hdd := models.StorageManager.TotalCapacity(
+		rangeObjs,
+		hostTypes, resourceTypes,
+		providers, brands, cloudEnv,
+		scope, ownerId,
+		pendingDeleted, includeSystem,
+		true,
+		policyResult,
+		"hybrid",
+		"system",
+	)
+	
+	if result_hdd.Capacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity")] = result_hdd.Capacity
+	}
+
+	if result_hdd.UsedCapacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity_used")] = result_hdd.UsedCapacity
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity_no_used")] = result_hdd.Capacity - result_hdd.UsedCapacity
+	}
 	count[sPrefix] = result.Capacity
 	for s, capa := range result.StorageTypeCapacity {
 		count[fmt.Sprintf("%s.storage_type.%s", sPrefix, s)] = capa
@@ -682,6 +725,8 @@ func StorageUsage(
 		pendingDeleted, includeSystem,
 		false,
 		policyResult,
+		"",
+		"",
 	)
 
 	count[fmt.Sprintf("%s", dPrefix)] = result.CapacityUsed
@@ -731,7 +776,7 @@ func DisksUsage(
 	policyResult rbacutils.SPolicyResult,
 ) Usage {
 	count := make(map[string]interface{})
-	result := models.StorageManager.TotalCapacity(rangeObjs, hostTypes, resourceTypes, providers, brands, cloudEnv, scope, ownerId, pendingDeleted, includeSystem, false, policyResult)
+	result := models.StorageManager.TotalCapacity(rangeObjs, hostTypes, resourceTypes, providers, brands, cloudEnv, scope, ownerId, pendingDeleted, includeSystem, false, policyResult, "", "")
 	count[dPrefix] = result.CapacityUsed
 	count[fmt.Sprintf("%s.storage", dPrefix)] = result.Capacity
 	count[fmt.Sprintf("%s.storage.virtual", dPrefix)] = result.CapacityVirtual
