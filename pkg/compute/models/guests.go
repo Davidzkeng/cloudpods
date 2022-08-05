@@ -166,6 +166,12 @@ type SGuest struct {
 
 	IsDaemon tristate.TriState `default:"false" list:"admin" create:"admin_optional" update:"admin"`
 
+	// cpu利用率
+	CpuUsage float64 `nullable:"false" default:"0" list:"user" create:"optional" update:"user" log:"skip"`
+	// 内存利用率
+	MemUsage float64 `nullable:"false" default:"0" list:"user" create:"optional" update:"user" log:"skip"`
+	// 磁盘利用率
+	DiskUsage float64 `nullable:"false" default:"0" list:"user" create:"optional" update:"user" log:"skip"`
 	// 最大内网带宽
 	InternetMaxBandwidthOut int `nullable:"false" list:"user" create:"optional"`
 	// 磁盘吞吐量
@@ -206,6 +212,10 @@ func (manager *SGuestManager) ListItemFilter(
 	query api.ServerListInput,
 ) (*sqlchemy.SQuery, error) {
 	var err error
+
+	if len(query.Id) > 0 {
+		q = q.Equals("id", query.Id)
+	}
 
 	q, err = manager.SHostResourceBaseManager.ListItemFilter(ctx, q, userCred, query.HostFilterListInput)
 	if err != nil {
