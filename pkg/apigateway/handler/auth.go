@@ -709,6 +709,14 @@ func (this *projectRoles) getToken(user, userId, domain, domainId string, ip str
 	}
 }
 
+func (this *GroupsList) json(s *mcclient.ClientSession) jsonutils.JSONObject {
+	obj := jsonutils.NewDict()
+	obj.Add(jsonutils.NewString(this.GroupId), "id")
+	obj.Add(jsonutils.NewString(this.GroupName), "name")
+	obj.Add(jsonutils.NewString(this.Rolebutt), "rolesbutt")
+	return obj
+}
+
 func (this *projectRoles) getRoles() []string {
 	roles := make([]string, 0)
 	for _, r := range this.roles {
@@ -851,6 +859,12 @@ func getUserInfo(ctx context.Context, req *http.Request) (*jsonutils.JSONDict, e
 	return getUserInfo2(s, token.GetUserId(), token.GetProjectId(), token.GetLoginIp())
 }
 
+type GroupsList struct {
+	GroupId   string `json:"group_id"`
+	GroupName string `json:"group_name"`
+	Rolebutt  string `json:"rolebutt"`
+}
+
 func getUserInfo2(s *mcclient.ClientSession, uid string, pid string, loginIp string) (*jsonutils.JSONDict, error) {
 	usr, err := fetchUserInfoById(s, uid)
 	if err != nil {
@@ -877,6 +891,7 @@ func getUserInfo2(s *mcclient.ClientSession, uid string, pid string, loginIp str
 	usrDomainId, _ := usr.GetString("domain_id")
 	usrDomainName, _ := usr.GetString("project_domain")
 
+	data.Add(jsonutils.NewBool(false), "need_reset_password")
 	data.Add(jsonutils.NewString(usrDomainId), "domain", "id")
 	data.Add(jsonutils.NewString(usrDomainName), "domain", "name")
 	data.Add(jsonutils.NewStringArray(auth.AdminCredential().GetRegions()), "regions")
@@ -906,6 +921,22 @@ func getUserInfo2(s *mcclient.ClientSession, uid string, pid string, loginIp str
 
 	}
 
+	var isdomain bool = false
+	profilters := jsonutils.NewDict()
+	profilters.Set("domain_id", jsonutils.NewString(usrDomainId))
+	prolist, err := modules.Projects.List(s, profilters)
+	if err != nil {
+		return nil, errors.Wrapf(err, "fetchProjectById %s", usrDomainId)
+	}
+	if len(prolist.Data) > 0 {
+		is_domains, _ := prolist.Data[0].GetString("is_domain")
+		if is_domains != "0" {
+			isdomain = true
+		}
+	}
+
+	data.Add(jsonutils.NewBool(isdomain), "is_domain")
+
 	log.Infof("getUserInfo modules.RoleAssignments.List")
 	query := jsonutils.NewDict()
 	query.Add(jsonutils.JSONNull, "effective")
@@ -919,15 +950,20 @@ func getUserInfo2(s *mcclient.ClientSession, uid string, pid string, loginIp str
 	}
 	currentRoles := make([]string, 0)
 	projects := make(map[string]*projectRoles)
+	policys := make([]string, 0)
 	for _, roleAssign := range roleAssigns.Data {
 		roleId, _ := roleAssign.GetString("role", "id")
 		roleName, _ := roleAssign.GetString("role", "name")
 		projectId, _ := roleAssign.GetString("scope", "project", "id")
+		policyid, _ := roleAssign.GetString("scope", "policy", "id")
 		projectName, _ := roleAssign.GetString("scope", "project", "name")
 		domainId, _ := roleAssign.GetString("scope", "project", "domain", "id")
 		domain, _ := roleAssign.GetString("scope", "project", "domain", "name")
 		if projectId == pid {
 			currentRoles = append(currentRoles, roleName)
+		}
+		if len(policyid) > 0 {
+			policys = append(policys, policyid)
 		}
 		_, ok := projects[projectId]
 		if ok {
@@ -936,6 +972,47 @@ func getUserInfo2(s *mcclient.ClientSession, uid string, pid string, loginIp str
 			projects[projectId] = newProjectRoles(projectId, projectName, roleId, roleName, domainId, domain)
 		}
 	}
+
+	var rolesbutt string = "user"
+	for _, value := range currentRoles {
+		if value == "sys_opsadmin" || value == "domainadmin" {
+			rolesbutt = "admin"
+		}
+	}
+
+	for _, value := range currentRoles {
+		if value == "admin" {
+			rolesbutt = "root"
+		}
+	}
+
+	groups := make([]GroupsList, 0)
+	if usrDomainId == "" {
+		groups = append(groups, GroupsList{GroupId: usrDomainId, GroupName: usrDomainId, Rolebutt: rolesbutt})
+	} else {
+		filters := jsonutils.NewDict()
+		filters.Set("domain_id", jsonutils.NewString(usrDomainId))
+		groupinfo, err := modules.Groups.List(s, filters)
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetchProjectById %s", pid)
+		}
+		if len(groupinfo.Data) > 0 {
+			group_data := groupinfo.Data
+			for _, value := range group_data {
+				group_name, _ := value.GetString("name")
+				group_id, _ := value.GetString("id")
+				groups = append(groups, GroupsList{GroupId: group_id, GroupName: group_name, Rolebutt: rolesbutt})
+			}
+		} else {
+			groups = append(groups, GroupsList{GroupId: usrDomainId, GroupName: usrDomainId, Rolebutt: rolesbutt})
+		}
+	}
+	groupJson := jsonutils.NewArray()
+	for _, group := range groups {
+		i := group.json(s)
+		groupJson.Add(i)
+	}
+	data.Add(groupJson, "group_list")
 
 	data.Add(jsonutils.NewStringArray(currentRoles), "roles")
 	var policies map[string][]string
