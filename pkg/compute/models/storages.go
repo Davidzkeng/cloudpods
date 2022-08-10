@@ -1033,7 +1033,7 @@ func (manager *SStorageManager) totalCapacityQ(
 	scope rbacutils.TRbacScope, ownerId mcclient.IIdentityProvider,
 	pendingDeleted bool, includeSystem bool,
 	storageOwnership bool,
-	policyResult rbacutils.SPolicyResult,
+	policyResult rbacutils.SPolicyResult, MediumType string, PublicScope string,
 ) *sqlchemy.SQuery {
 	stmt := manager.disksReadyQ(scope, ownerId, pendingDeleted, includeSystem, policyResult)
 	stmt2 := manager.disksFailedQ(scope, ownerId, pendingDeleted, includeSystem, policyResult)
@@ -1074,6 +1074,7 @@ func (manager *SStorageManager) totalCapacityQ(
 		storages.Field("capacity"),
 		storages.Field("reserved"),
 		storages.Field("cmtbound"),
+		storages.Field("actual_capacity_used"),
 		storages.Field("storage_type"),
 		storages.Field("medium_type"),
 		stmt.Field("used_capacity"),
@@ -1085,6 +1086,16 @@ func (manager *SStorageManager) totalCapacityQ(
 		detachedDisks.Field("detached_used_capacity"),
 		detachedDisks.Field("detached_count"),
 	)
+
+	log.Infoln("medium_type:", MediumType)
+	if len(MediumType) > 0 {
+		q = q.Equals("medium_type", MediumType)
+	}
+
+	if len(PublicScope) > 0 {
+		q = q.Equals("public_scope", PublicScope)
+	}
+
 	q = q.LeftJoin(stmt, sqlchemy.Equals(stmt.Field("storage_id"), storages.Field("id")))
 	q = q.LeftJoin(stmt2, sqlchemy.Equals(stmt2.Field("storage_id"), storages.Field("id")))
 	q = q.LeftJoin(attachedDisks, sqlchemy.Equals(attachedDisks.Field("storage_id"), storages.Field("id")))
@@ -1097,6 +1108,7 @@ type StorageStat struct {
 	Capacity             int
 	Reserved             int
 	Cmtbound             float32
+	ActualCapacityUsed   int
 	StorageType          string
 	MediumType           string
 	UsedCapacity         int
@@ -1120,6 +1132,7 @@ type StoragesCapacityStat struct {
 	CountAttached    int
 	DetachedCapacity int64
 	CountDetached    int
+	UsedCapacity     int64
 
 	MediumeCapacity             map[string]int64
 	StorageTypeCapacity         map[string]int64
@@ -1138,16 +1151,17 @@ func (manager *SStorageManager) calculateCapacity(q *sqlchemy.SQuery) StoragesCa
 		log.Errorf("calculateCapacity: %v", err)
 	}
 	var (
-		tCapa   int64   = 0
-		tVCapa  float64 = 0
-		tUsed   int64   = 0
-		cUsed   int     = 0
-		tFailed int64   = 0
-		cFailed int     = 0
-		atCapa  int64   = 0
-		atCount int     = 0
-		dtCapa  int64   = 0
-		dtCount int     = 0
+		tCapa    int64   = 0
+		tVCapa   float64 = 0
+		tUsed    int64   = 0
+		tUseCapa int64   = 0
+		cUsed    int     = 0
+		tFailed  int64   = 0
+		cFailed  int     = 0
+		atCapa   int64   = 0
+		atCount  int     = 0
+		dtCapa   int64   = 0
+		dtCount  int     = 0
 
 		mCapa   = map[string]int64{}
 		sCapa   = map[string]int64{}
@@ -1173,6 +1187,7 @@ func (manager *SStorageManager) calculateCapacity(q *sqlchemy.SQuery) StoragesCa
 	}
 	for _, stat := range stats {
 		tCapa += int64(stat.Capacity - stat.Reserved)
+		tUseCapa += int64(stat.ActualCapacityUsed)
 		if stat.Cmtbound == 0 {
 			stat.Cmtbound = options.Options.DefaultStorageOvercommitBound
 		}
@@ -1207,6 +1222,7 @@ func (manager *SStorageManager) calculateCapacity(q *sqlchemy.SQuery) StoragesCa
 		DetachedMediumeCapacity:     mdtCapa,
 		DetachedStorageTypeCapacity: sdtCapa,
 		CountDetached:               dtCount,
+		UsedCapacity:                tUseCapa,
 	}
 }
 
@@ -1220,6 +1236,8 @@ func (manager *SStorageManager) TotalCapacity(
 	pendingDeleted bool, includeSystem bool,
 	storageOwnership bool,
 	policyResult rbacutils.SPolicyResult,
+	MediumType string,
+	PublicScope string,
 ) StoragesCapacityStat {
 	res1 := manager.calculateCapacity(
 		manager.totalCapacityQ(
@@ -1231,6 +1249,8 @@ func (manager *SStorageManager) TotalCapacity(
 			pendingDeleted, includeSystem,
 			storageOwnership,
 			policyResult,
+			MediumType,
+			PublicScope,
 		),
 	)
 	return res1
@@ -1464,6 +1484,10 @@ func (manager *SStorageManager) ListItemFilter(
 
 	if query.Local != nil && *query.Local {
 		q = q.Filter(sqlchemy.In(q.Field("storage_type"), api.STORAGE_LOCAL_TYPES))
+	}
+
+	if len(query.MediumType) > 0 {
+		q = q.Equals("medium_type", query.MediumType)
 	}
 
 	if len(query.SchedtagId) > 0 {
