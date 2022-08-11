@@ -43,7 +43,6 @@ func AnalysisData(dbname []string, vm_id string) Usage {
 		}
 		for _, result := range rtn {
 			for _, obj := range result {
-				log.Infof("==== [%+v] ====", obj)
 				var usage = "0"
 				for i, col := range obj.Columns {
 					if len(obj.Values[0]) <= 0 {
@@ -84,7 +83,6 @@ func SyncHostData(reportData map[string]Usage) {
 	regions := adminToken.GetRegions()
 	s := auth.GetAdminSession(nil, regions[0], "")
 	body := jsonutils.NewDict()
-	log.Infof("The parsed data is:", reportData)
 	for key, value := range reportData {
 		body.Set("cpu_usage", jsonutils.NewString(value.CpuUsage))
 		body.Set("mem_usage", jsonutils.NewString(value.MemUsage))
@@ -109,11 +107,8 @@ func UpdateDB(vm_id, usage, vm_name string) {
 		body.Set("mem_usage", jsonutils.NewString(usage))
 	}
 
-	log.Infof("update db data:", vm_id, usage, vm_name)
-	if data, err := modules.Servers.Update(s, vm_id, body); err != nil {
+	if _, err := modules.Servers.Update(s, vm_id, body); err != nil {
 		log.Errorf("sync update host data err=[%v]", err)
-	} else {
-		log.Infof("db write:", data)
 	}
 }
 
@@ -133,7 +128,6 @@ func GetServerId() []string {
 			log.Infof("error")
 		}
 	}
-	log.Infof("get to vm_id:", vm_ids)
 	return vm_ids
 }
 
