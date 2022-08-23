@@ -60,6 +60,7 @@ type ServerListOptions struct {
 	OrderByDisk    string `help:"Order by disk size" choices:"asc|desc"`
 	OrderByHost    string `help:"Order by host name" choices:"asc|desc"`
 	OrderByNetwork string `help:"Order by network name" choices:"asc|desc"`
+	OrderByIp      string `help:"Order by ip" choices:"asc|desc"`
 
 	ResourceType string `help:"Resource type" choices:"shared|prepaid|dedicated"`
 
@@ -399,7 +400,7 @@ type ServerCreateOptionalOptions struct {
 	Iso              string   `help:"ISO image ID" metavar:"IMAGE_ID" json:"cdrom"`
 	VcpuCount        int      `help:"#CPU cores of VM server, default 1" default:"1" metavar:"<SERVER_CPU_COUNT>" json:"vcpu_count" token:"ncpu"`
 	InstanceType     string   `help:"instance flavor"`
-	Vga              string   `help:"VGA driver" choices:"std|vmware|cirrus|qxl"`
+	Vga              string   `help:"VGA driver" choices:"std|vmware|cirrus|qxl|virtio"`
 	Vdi              string   `help:"VDI protocool" choices:"vnc|spice"`
 	Bios             string   `help:"BIOS" choices:"BIOS|UEFI"`
 	Machine          string   `help:"Machine type" choices:"pc|q35"`
@@ -624,7 +625,7 @@ type ServerUpdateOptions struct {
 	Name             string `help:"New name to change"`
 	Vmem             string `help:"Memory size" json:"vmem_size"`
 	Ncpu             *int   `help:"CPU count" json:"vcpu_count"`
-	Vga              string `help:"VGA driver" choices:"std|vmware|cirrus|qxl"`
+	Vga              string `help:"VGA driver" choices:"std|vmware|cirrus|qxl|virtio"`
 	Vdi              string `help:"VDI protocol" choices:"vnc|spice"`
 	Bios             string `help:"BIOS" choices:"BIOS|UEFI"`
 	Desc             string `help:"Description" json:"description"`

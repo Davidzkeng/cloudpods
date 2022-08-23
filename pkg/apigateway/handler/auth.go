@@ -79,6 +79,7 @@ func (h *AuthHandlers) AddMethods() {
 		NewHP(handleOIDCConfiguration, "oidc", ".well-known", "openid-configuration"),
 		NewHP(handleOIDCJWKeys, "oidc", "keys"),
 		NewHP(handleOIDCUserInfo, "oidc", "user"),
+		NewHP(handleOIDCRPInitLogout, "oidc", "logout"),
 	)
 	h.AddByMethod(POST, nil,
 		NewHP(h.initTotpSecrets, "initcredential"),
@@ -91,6 +92,7 @@ func (h *AuthHandlers) AddMethods() {
 		NewHP(h.handleIdpInitSsoLogin, "ssologin", "<idp_id>"),
 		NewHP(handleOIDCToken, "oidc", "token"),
 		NewHP(h.restPlan, "reset", "plan"),
+		NewHP(handleOIDCRPInitLogout, "oidc", "logout"),
 	)
 
 	// auth middleware handler
@@ -624,7 +626,7 @@ func (h *AuthHandlers) doLogin(ctx context.Context, w http.ResponseWriter, req *
 	return nil
 }
 
-func (h *AuthHandlers) postLogoutHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+func doLogout(ctx context.Context, w http.ResponseWriter, req *http.Request) {
 	token, _, _ := fetchAuthInfo(ctx, req)
 	if token != nil {
 		// valid login, log the event
@@ -633,6 +635,10 @@ func (h *AuthHandlers) postLogoutHandler(ctx context.Context, w http.ResponseWri
 	}
 	clearAuthCookie(w)
 	appsrv.DisableClientCache(w)
+}
+
+func (h *AuthHandlers) postLogoutHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	doLogout(ctx, w, req)
 	appsrv.Send(w, "")
 }
 
