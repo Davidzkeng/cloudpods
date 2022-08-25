@@ -153,7 +153,7 @@ func (h *AuthHandlers) GetRegionsResponse(ctx context.Context, w http.ResponseWr
 		EncryptPasswd: true,
 	}
 
-	s := auth.GetAdminSession(ctx, regions[0], "")
+	s := auth.GetAdminSession(ctx, regions[0])
 	if options.Options.ReturnFullDomainList {
 		filters := jsonutils.NewDict()
 		if len(currentDomain) > 0 {
@@ -230,7 +230,7 @@ func (h *AuthHandlers) getUser(ctx context.Context, w http.ResponseWriter, req *
 
 func getStatsInfo(ctx context.Context, req *http.Request) (jsonutils.JSONObject, error) {
 	token := AppContextToken(ctx)
-	s := auth.GetSession(ctx, token, FetchRegion(req), "")
+	s := auth.GetSession(ctx, token, FetchRegion(req))
 	params, _ := jsonutils.ParseQueryString(req.URL.RawQuery)
 
 	if params == nil {
@@ -308,7 +308,7 @@ func doTenantLogin(ctx context.Context, req *http.Request, body jsonutils.JSONOb
 }
 
 func fetchUserInfoFromToken(ctx context.Context, req *http.Request, token mcclient.TokenCredential) (jsonutils.JSONObject, error) {
-	s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+	s := auth.GetAdminSession(ctx, FetchRegion(req))
 	return fetchUserInfoById(s, token.GetUserId())
 }
 
@@ -385,7 +385,7 @@ func (h *AuthHandlers) doCredentialLogin(ctx context.Context, req *http.Request,
 	}
 	uname := token.GetUserName()
 	if len(tenant) > 0 {
-		s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+		s := auth.GetAdminSession(ctx, FetchRegion(req))
 		jsonProj, e := modules.Projects.GetById(s, tenant, nil)
 		if e != nil {
 			log.Errorf("fail to find preset project %s, reset to empty", tenant)
@@ -432,7 +432,7 @@ func (h *AuthHandlers) doCredentialLogin(ctx context.Context, req *http.Request,
 		}
 	}
 	if len(tenant) == 0 {
-		s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+		s := auth.GetAdminSession(ctx, FetchRegion(req))
 		projects, e := modules.UsersV3.GetProjects(s, token.GetUserId())
 		if e == nil && len(projects.Data) > 0 {
 			projectJson := projects.Data[0]
@@ -586,7 +586,7 @@ func (h *AuthHandlers) doLogin(ctx context.Context, w http.ResponseWriter, req *
 		if err != nil {
 			return err
 		}
-		s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+		s := auth.GetAdminSession(ctx, FetchRegion(req))
 		isTotpInit, err := isUserTotpCredInitialed(s, token.GetUserId())
 		if err != nil {
 			return err
@@ -854,7 +854,7 @@ func isHostAgentExists(s *mcclient.ClientSession) (bool, error) {
 
 func getUserInfo(ctx context.Context, req *http.Request) (*jsonutils.JSONDict, error) {
 	token := AppContextToken(ctx)
-	s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+	s := auth.GetAdminSession(ctx, FetchRegion(req))
 	/*log.Infof("getUserInfo modules.UsersV3.Get")
 	usr, err := modules.UsersV3.Get(s, token.GetUserId(), nil)
 	if err != nil {
@@ -1196,7 +1196,7 @@ func (h *AuthHandlers) doCreatePolicies(ctx context.Context, w http.ResponseWrit
 		httperrors.InvalidInputError(ctx, w, "request body is empty")
 		return
 	}
-	s := auth.GetSession(ctx, t, FetchRegion(req), "")
+	s := auth.GetSession(ctx, t, FetchRegion(req))
 	result, err := policytool.PolicyCreate(s, body)
 	if err != nil {
 		httperrors.GeneralServerError(ctx, w, err)
@@ -1216,7 +1216,7 @@ func (h *AuthHandlers) doPatchPolicy(ctx context.Context, w http.ResponseWriter,
 		httperrors.InvalidInputError(ctx, w, "request body is empty")
 		return
 	}
-	s := auth.GetSession(ctx, t, FetchRegion(req), "")
+	s := auth.GetSession(ctx, t, FetchRegion(req))
 	result, err := policytool.PolicyPatch(s, params["<policy_id>"], body)
 	if err != nil {
 		httperrors.GeneralServerError(ctx, w, err)
@@ -1232,7 +1232,7 @@ func (h *AuthHandlers) doDeletePolicies(ctx context.Context, w http.ResponseWrit
 	// 	return
 	// }
 	_, query, _ := appsrv.FetchEnv(ctx, w, req)
-	s := auth.GetSession(ctx, t, FetchRegion(req), "")
+	s := auth.GetSession(ctx, t, FetchRegion(req))
 
 	idlist, e := query.GetArray("id")
 	if e != nil || len(idlist) == 0 {
@@ -1324,7 +1324,7 @@ func (h *AuthHandlers) resetUserPassword(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	s := auth.GetAdminSession(ctx, FetchRegion(req), "")
+	s := auth.GetAdminSession(ctx, FetchRegion(req))
 	// 2.如果已开启MFA，验证 随机密码正确
 	if isMfaEnabled(user) {
 		err = authToken.VerifyTotpPasscode(s, t.GetUserId(), input.Passcode)
