@@ -47,6 +47,7 @@ import (
 	"yunion.io/x/onecloud/pkg/hostman/hostinfo/hostconsts"
 	"yunion.io/x/onecloud/pkg/hostman/hostutils"
 	"yunion.io/x/onecloud/pkg/hostman/monitor"
+	"yunion.io/x/onecloud/pkg/hostman/monitor/qga"
 	"yunion.io/x/onecloud/pkg/hostman/options"
 	"yunion.io/x/onecloud/pkg/hostman/storageman"
 	"yunion.io/x/onecloud/pkg/httperrors"
@@ -86,6 +87,7 @@ type SKVMGuestInstance struct {
 	Desc           *jsonutils.JSONDict
 	Monitor        monitor.Monitor
 	manager        *SGuestManager
+	guestAgent     *qga.QemuGuestAgent
 	startupTask    *SGuestResumeTask
 	migrateTask    *SGuestLiveMigrateTask
 	stopping       bool
@@ -378,6 +380,7 @@ func (s *SKVMGuestInstance) asyncScriptStart(ctx context.Context, params interfa
 		tried += 1
 
 		vncPort := s.manager.GetFreeVncPort()
+		defer s.manager.unsetPort(vncPort)
 		log.Infof("Use vnc port %d", vncPort)
 		if err = s.saveVncPort(vncPort); err != nil {
 			goto finally
@@ -385,7 +388,16 @@ func (s *SKVMGuestInstance) asyncScriptStart(ctx context.Context, params interfa
 			data.Set("vnc_port", jsonutils.NewInt(int64(vncPort)))
 		}
 
-		if err = s.saveScripts(data); err != nil {
+		// get live migrate listen port
+		if jsonutils.QueryBoolean(data, "need_migrate", false) ||
+			jsonutils.QueryBoolean(s.Desc, "is_slave", false) {
+			migratePort := s.manager.GetLiveMigrateFreePort()
+			defer s.manager.unsetPort(migratePort)
+			data.Set("live_migrate_port", jsonutils.NewInt(int64(migratePort)))
+		}
+
+		err = s.saveScripts(data)
+		if err != nil {
 			goto finally
 		} else {
 			err = s.scriptStart()
@@ -768,6 +780,19 @@ func (s *SKVMGuestInstance) eventBlockJobReady(event *monitor.Event) {
 	}
 }
 
+func (s *SKVMGuestInstance) QgaPath() string {
+	return path.Join(s.HomeDir(), "qga.sock")
+}
+
+func (s *SKVMGuestInstance) InitQga() error {
+	guestAgent, err := qga.NewQemuGuestAgent(s.Id, s.QgaPath())
+	if err != nil {
+		return err
+	}
+	s.guestAgent = guestAgent
+	return nil
+}
+
 func (s *SKVMGuestInstance) SyncMirrorJobFailed(reason string) {
 	params := jsonutils.NewDict()
 	params.Set("reason", jsonutils.NewString(reason))
@@ -830,18 +855,23 @@ func (s *SKVMGuestInstance) onGetQemuVersion(ctx context.Context, version string
 		}
 	} else if s.IsSlave() {
 		s.startQemuBuiltInNbdServer(ctx)
-	} else if s.IsMaster() {
-		s.startDiskBackupMirror(ctx)
-		if ctx != nil && len(appctx.AppContextTaskId(ctx)) > 0 {
-			s.DoResumeTask(ctx, false)
-		} else {
-			if options.HostOptions.SetVncPassword {
-				s.SetVncPassword()
-			}
-			s.OnResumeSyncMetadataInfo()
-		}
 	} else {
-		s.DoResumeTask(ctx, true)
+		if s.IsMaster() {
+			s.startDiskBackupMirror(ctx)
+			if ctx != nil && len(appctx.AppContextTaskId(ctx)) > 0 {
+				s.DoResumeTask(ctx, false)
+			} else {
+				if options.HostOptions.SetVncPassword {
+					s.SetVncPassword()
+				}
+				s.OnResumeSyncMetadataInfo()
+			}
+		} else {
+			s.DoResumeTask(ctx, true)
+		}
+		if err := s.InitQga(); err != nil {
+			log.Errorf("Guest %s init qga failed %s", s.Id, err)
+		}
 	}
 }
 
@@ -851,6 +881,10 @@ func (s *SKVMGuestInstance) onMonitorDisConnect(err error) {
 	s.scriptStop()
 	if !jsonutils.QueryBoolean(s.Desc, "is_slave", false) {
 		s.SyncStatus(fmt.Sprintf("monitor disconnect %v", err))
+	}
+	if s.guestAgent != nil {
+		s.guestAgent.Close()
+		s.guestAgent = nil
 	}
 	s.clearCgroup(0)
 	s.Monitor = nil
@@ -884,7 +918,8 @@ func (s *SKVMGuestInstance) startDiskBackupMirror(ctx context.Context) {
 
 func (s *SKVMGuestInstance) startQemuBuiltInNbdServer(ctx context.Context) {
 	if ctx != nil && len(appctx.AppContextTaskId(ctx)) > 0 {
-		nbdServerPort := s.manager.GetFreePortByBase(BUILT_IN_NBD_SERVER_PORT_BASE)
+		nbdServerPort := s.manager.GetNBDServerFreePort()
+		defer s.manager.unsetPort(nbdServerPort)
 		var onNbdServerStarted = func(res string) {
 			if len(res) > 0 {
 				log.Errorf("Start Qemu Builtin nbd server error %s", res)
