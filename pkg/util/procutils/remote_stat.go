@@ -58,7 +58,7 @@ func (s *sFileStat) Sys() interface{} {
 }
 
 func RemoteStat(filename string) (os.FileInfo, error) {
-	output, err := NewRemoteCommandAsFarAsPossible("stat", "-c", `{"file_name":%s,"file_size":"%n","file_type":"%F"}`, filename).Output()
+	output, err := NewRemoteCommandAsFarAsPossible("stat", "-c", `{"file_size":%s,"file_name":"%n","file_type":"%F"}`, filename).Output()
 	if err != nil {
 		if strings.Contains(strings.ToLower(string(output)), "no such file or directory") {
 			return nil, os.ErrNotExist
