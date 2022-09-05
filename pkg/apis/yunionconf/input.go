@@ -42,6 +42,8 @@ type ParameterListInput struct {
 
 	// filter by name
 	Name []string `json:"name"`
+
+	Namespace string `json:"namespace"`
 }
 
 type ScopedPolicyCreateInput struct {
