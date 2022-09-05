@@ -30,7 +30,7 @@ func GetInfluxAgentData(dbname []string, vm_id string) map[string]Usage {
 }
 
 func AnalysisData(dbname []string, vm_id string) Usage {
-	db := influxdb.NewInfluxdbWithDebug(InfluxdbReader, true)
+	db := influxdb.NewInfluxdbWithDebug(InfluxdbReader, false)
 	usage_type := Usage{}
 	for _, name := range dbname {
 		query := fmt.Sprintf("SELECT * FROM %s where vm_id = '%s' order by time desc limit 1", name, vm_id)
