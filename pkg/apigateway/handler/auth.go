@@ -1411,7 +1411,7 @@ func (h *AuthHandlers) PutResetPlan(ctx context.Context, w http.ResponseWriter, 
 	if len(regions) == 0 {
 		return resetdata, errors.Error("region is empty")
 	}
-	s := auth.GetAdminSession(ctx, regions[0], "")
+	s := auth.GetAdminSession(ctx, regions[0])
 	params := jsonutils.NewDict()
 	params.Add(jsonutils.NewString("user"), "namespace")
 	params.Add(jsonutils.NewString("system"), "scope")
