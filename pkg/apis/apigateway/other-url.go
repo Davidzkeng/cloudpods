@@ -15,7 +15,7 @@
 package apigateway
 
 type SOtherUrlReponse struct {
-	Registe        string `json:"registe,allowempty"`
-	Forgetpassword string `json:"forgetpassword,allowempty"`
-	Mfaverify      string `json:"mfaverify,allowempty"`
+	Registe        string `json:"aiopsregister,allowempty"`
+	Forgetpassword string `json:"aiopsforgetpassword,allowempty"`
+	Mfaverify      string `json:"aiopsmfaverify,allowempty"`
 }
