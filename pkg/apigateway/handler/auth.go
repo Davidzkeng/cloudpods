@@ -1429,3 +1429,12 @@ func (h *AuthHandlers) PutResetPlan(ctx context.Context, w http.ResponseWriter, 
 	resetdata.Total = len(returnjson)
 	return resetdata, nil
 }
+
+func (h *AuthHandlers) GetOtherUrlResponse(ctx context.Context, w http.ResponseWriter, req *http.Request) (*agapi.SOtherUrlReponse, error) {
+	ret := &agapi.SOtherUrlReponse{
+		Registe:        options.Options.OurlRegiste,
+		Forgetpassword: options.Options.OurlForgetPassword,
+		Mfaverify:      options.Options.OurlMfaVerify,
+	}
+	return ret, nil
+}

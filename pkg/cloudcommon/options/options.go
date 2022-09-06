@@ -114,6 +114,12 @@ type BaseOptions struct {
 	EnableTlsMigration bool `help:"Enable TLS migration" default:"false"`
 }
 
+type OtherUrlOptions struct {
+	OurlForgetPassword string `help:"forget_password"`
+	OurlMfaVerify      string `help:"mfa_verify"`
+	OurlRegiste        string `help:"registe"`
+}
+
 const (
 	LockMethodInMemory = "inmemory"
 	LockMethodEtcd     = "etcd"
@@ -184,6 +190,10 @@ type EtcdOptions struct {
 	EtcdCacert        string   `help:"path to cacert for connecting to etcd cluster"`
 	EtcdCert          string   `help:"path to cert file for connecting to etcd cluster"`
 	EtcdKey           string   `help:"path to key file for connecting to etcd cluster"`
+}
+
+func (opt *OtherUrlOptions) GetOtherUrlConfig() (string, string, string, error) {
+	return opt.OurlForgetPassword, opt.OurlMfaVerify, opt.OurlRegiste, nil
 }
 
 func (opt *EtcdOptions) GetEtcdTLSConfig() (*tls.Config, error) {

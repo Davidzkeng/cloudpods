@@ -48,6 +48,8 @@ type GatewayOptions struct {
 
 	common_options.CommonOptions `"request_worker_count->default":"32"`
 
+	common_options.OtherUrlOptions `"request_worker_count->default":"32"`
+
 	EnableSyslogWebservice bool `help:"enable syslog webservice"`
 
 	SyslogWebserviceUsername string `help:"syslog web service user name"`
