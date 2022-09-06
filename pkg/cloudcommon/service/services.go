@@ -20,8 +20,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
-	"yunion.io/x/onecloud/pkg/hostman/hostmetrics"
-
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/util/signalutils"
 	"yunion.io/x/pkg/utils"
@@ -50,7 +48,6 @@ func NewBaseService(service IService) *SServiceBase {
 func (s *SServiceBase) StartService() {
 	defer s.Service.OnExitService()
 	defer s.RemovePid()
-	go hostmetrics.TickRun()
 	s.Service.InitService()
 	if err := s.CreatePid(); err != nil {
 		log.Fatalln(err)

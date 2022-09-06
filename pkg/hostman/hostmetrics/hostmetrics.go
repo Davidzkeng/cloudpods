@@ -61,6 +61,7 @@ func Init() {
 }
 
 func Start() {
+	go TickRun()
 	if hostMetricsCollector != nil {
 		go hostMetricsCollector.Start()
 	}
