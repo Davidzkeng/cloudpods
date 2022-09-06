@@ -79,9 +79,9 @@ func AnalysisData(dbname []string, vm_id string) Usage {
 }
 
 func SyncHostData(reportData map[string]Usage) {
-	//adminToken := auth.AdminCredential()
-	//regions := adminToken.GetRegions()
-	s := auth.GetAdminSession(nil, "")
+	adminToken := auth.AdminCredential()
+	regions := adminToken.GetRegions()
+	s := auth.GetAdminSession(nil, regions[0])
 	body := jsonutils.NewDict()
 	for key, value := range reportData {
 		body.Set("cpu_usage", jsonutils.NewString(value.CpuUsage))
@@ -95,9 +95,9 @@ func SyncHostData(reportData map[string]Usage) {
 }
 
 func UpdateDB(vm_id, usage, vm_name string) {
-	//adminToken := auth.AdminCredential()
-	//regions := adminToken.GetRegions()
-	s := auth.GetAdminSession(nil, "")
+	adminToken := auth.AdminCredential()
+	regions := adminToken.GetRegions()
+	s := auth.GetAdminSession(nil, regions[0])
 	body := jsonutils.NewDict()
 	if vm_name == "vm_cpu" {
 		body.Set("cpu_usage", jsonutils.NewString(usage))
@@ -118,7 +118,6 @@ func GetServerId() []string {
 	regions := adminToken.GetRegions()
 	s := auth.GetAdminSession(nil, regions[0])
 	results, _ := modules.Servers.List(s, filter)
-	fmt.Println("获得的results的值为：", results)
 	vm_ids := []string{}
 	for _, result := range results.Data {
 		id, err := result.GetString("id")
