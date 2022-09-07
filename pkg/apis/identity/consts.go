@@ -226,12 +226,6 @@ var (
 			"deploy_server_socket_path",
 			"enable_remote_executor",
 			"executor_socket_path",
-			// ############################
-			// other-url blacklist options
-			// ############################
-			"ourl_forget_password",
-			"ourl_mfa_verify",
-			"ourl_registe",
 		},
 	}
 )
