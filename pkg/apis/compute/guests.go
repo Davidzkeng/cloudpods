@@ -664,6 +664,8 @@ type ServerDeployInput struct {
 
 	// swagger: ignore
 	DeployConfigs []*DeployConfig `json:"deploy_configs"`
+	// swagger: ignore
+	DeployTelegraf bool `json:"deploy_telegraf"`
 }
 
 type ServerUserDataInput struct {
@@ -899,4 +901,13 @@ type ServerQgaSetPasswordInput struct {
 
 type ServerQgaCommandInput struct {
 	Command string
+}
+
+type ServerSetPasswordInput struct {
+	Username string
+	Password string
+
+	// deploy params
+	ResetPassword bool
+	AutoStart     bool
 }

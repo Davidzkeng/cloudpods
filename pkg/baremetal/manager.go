@@ -1607,7 +1607,7 @@ func (b *SBaremetalInstance) adjustUEFIWrapper(cli *ssh.Client, f func() error) 
 		return errors.Wrap(err, "Check is uefi boot")
 	}
 	if !isUEFI {
-		return nil
+		return b.CleanUEFIInfo()
 	}
 	return f()
 }
@@ -1625,13 +1625,8 @@ func (b *SBaremetalInstance) AdjustUEFICurrentBootOrder(hostCli *ssh.Client) err
 	})
 }
 
-func (b *SBaremetalInstance) SendUEFIInfo(mgr *uefi.BootMgr) error {
-	info, err := mgr.ToEFIBootMgrInfo()
-	if err != nil {
-		return err
-	}
+func (b *SBaremetalInstance) updateUEFIInfo(uefiData jsonutils.JSONObject) error {
 	desc := b.desc
-	uefiData := jsonutils.Marshal(info)
 	desc.Add(uefiData, "uefi_info")
 	if err := b.SaveDesc(desc); err != nil {
 		return errors.Wrap(err, "Save uefi_info")
@@ -1640,6 +1635,24 @@ func (b *SBaremetalInstance) SendUEFIInfo(mgr *uefi.BootMgr) error {
 	updateData.Add(uefiData, "uefi_info")
 	if _, err := modules.Hosts.Update(b.GetClientSession(), b.GetId(), updateData); err != nil {
 		return errors.Wrap(err, "Update cloud uefi info")
+	}
+	return nil
+}
+
+func (b *SBaremetalInstance) CleanUEFIInfo() error {
+	if err := b.updateUEFIInfo(jsonutils.NewDict()); err != nil {
+		return errors.Wrap(err, "CleanUEFIInfo")
+	}
+	return nil
+}
+
+func (b *SBaremetalInstance) SendUEFIInfo(mgr *uefi.BootMgr) error {
+	info, err := mgr.ToEFIBootMgrInfo()
+	if err != nil {
+		return err
+	}
+	if err := b.updateUEFIInfo(jsonutils.Marshal(info)); err != nil {
+		return errors.Wrap(err, "SendUEFIInfo")
 	}
 	return nil
 }
@@ -2847,7 +2860,9 @@ func (s *SBaremetalServer) DoDeploy(tool *disktool.SSHPartitionTool, term *ssh.C
 		password = seclib.RandomPassword(12)
 	}
 	deployInfo := deployapi.NewDeployInfo(publicKey, deployapi.JsonDeploysToStructs(deploys),
-		password, isInit, true, o.Options.LinuxDefaultRootUser, o.Options.WindowsDefaultAdminUser, false, "")
+		password, isInit, true, o.Options.LinuxDefaultRootUser, o.Options.WindowsDefaultAdminUser, false, "",
+		false, "",
+	)
 	return s.deployFs(tool, term, deployInfo)
 }
 
