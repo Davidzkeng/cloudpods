@@ -11,21 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+package cloudprovider
 
-package monitor
+type ModelartsPoolCreateOption struct {
+	Name         string
+	PoolDesc     string
+	BillingMode  uint
+	PeriodType   uint
+	PeriodNum    uint
+	AutoRenew    uint
+	InstanceType string
+	NetworkId    string
 
-import (
-	modules "yunion.io/x/onecloud/pkg/mcclient/modules/monitor"
-	options "yunion.io/x/onecloud/pkg/mcclient/options/monitor"
-)
+	WorkType string
+}
 
-func init() {
-	cmd := NewResourceCmd(modules.CommonAlerts)
-	cmd.Create(new(options.CommonAlertCreateOptions))
-	cmd.List(new(options.CommonAlertListOptions))
-	cmd.Show(new(options.CommonAlertShowOptions))
-	cmd.Perform("enable", &options.CommonAlertShowOptions{})
-	cmd.Perform("disable", &options.CommonAlertShowOptions{})
-	cmd.BatchDelete(new(options.CommonAlertDeleteOptions))
-	cmd.Perform("config", &options.CommonAlertUpdateOptions{})
+type Azs struct {
+	Az    string `json:"az"`
+	Count int    `json:"count"`
 }

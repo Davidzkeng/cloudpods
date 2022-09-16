@@ -128,6 +128,10 @@ func (self *SBaseCollectDriver) CollectK8sMetrics(ctx context.Context, manager a
 	return cloudprovider.ErrNotImplemented
 }
 
+func (self *SBaseCollectDriver) CollectModelartsPoolMetrics(ctx context.Context, manager api.CloudproviderDetails, provider cloudprovider.ICloudProvider, res map[string]api.ModelartsPoolDetails, start, end time.Time) error {
+	return cloudprovider.ErrNotImplemented
+}
+
 type SCollectByResourceIdDriver struct {
 	SBaseCollectDriver
 }
@@ -217,6 +221,7 @@ func (self *SCollectByResourceIdDriver) CollectServerMetrics(ctx context.Context
 				RegionExtId:  vm.RegionExtId,
 				StartTime:    start,
 				EndTime:      end,
+				OsType:       vm.OsType,
 			}
 			opts.ResourceId = vm.ExternalId
 

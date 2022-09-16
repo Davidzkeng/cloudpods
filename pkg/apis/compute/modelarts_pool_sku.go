@@ -12,20 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package compute
 
-import (
-	modules "yunion.io/x/onecloud/pkg/mcclient/modules/monitor"
-	options "yunion.io/x/onecloud/pkg/mcclient/options/monitor"
+import "yunion.io/x/onecloud/pkg/apis"
+
+type ModelartsPoolSkuDetails struct {
+	apis.EnabledStatusStandaloneResourceDetails
+	ManagedResourceInfo
+	CloudregionResourceInfo
+}
+
+const (
+	MODELARTS_POOL_SKU_AVAILABLE = "available"
+	MODELARTS_POOL_SKU_SOLDOUT   = "soldout"
 )
 
-func init() {
-	cmd := NewResourceCmd(modules.CommonAlerts)
-	cmd.Create(new(options.CommonAlertCreateOptions))
-	cmd.List(new(options.CommonAlertListOptions))
-	cmd.Show(new(options.CommonAlertShowOptions))
-	cmd.Perform("enable", &options.CommonAlertShowOptions{})
-	cmd.Perform("disable", &options.CommonAlertShowOptions{})
-	cmd.BatchDelete(new(options.CommonAlertDeleteOptions))
-	cmd.Perform("config", &options.CommonAlertUpdateOptions{})
+type ModelartsPoolSkuListInput struct {
+	apis.EnabledStatusStandaloneResourceListInput
+	apis.ExternalizedResourceBaseListInput
+
+	RegionalFilterListInput
+	ManagedResourceListInput
 }

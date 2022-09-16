@@ -1,3 +1,4 @@
+// @@ -0,0 +1,46 @@
 // Copyright 2019 Yunion
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +13,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package shell
 
 import (
-	modules "yunion.io/x/onecloud/pkg/mcclient/modules/monitor"
-	options "yunion.io/x/onecloud/pkg/mcclient/options/monitor"
+	"yunion.io/x/onecloud/pkg/multicloud/huawei"
+	"yunion.io/x/onecloud/pkg/util/shellutils"
 )
 
 func init() {
-	cmd := NewResourceCmd(modules.CommonAlerts)
-	cmd.Create(new(options.CommonAlertCreateOptions))
-	cmd.List(new(options.CommonAlertListOptions))
-	cmd.Show(new(options.CommonAlertShowOptions))
-	cmd.Perform("enable", &options.CommonAlertShowOptions{})
-	cmd.Perform("disable", &options.CommonAlertShowOptions{})
-	cmd.BatchDelete(new(options.CommonAlertDeleteOptions))
-	cmd.Perform("config", &options.CommonAlertUpdateOptions{})
+	type ModelartsResourceflavorsListOption struct {
+		PoolName string `help:"Pool Name"`
+	}
+	shellutils.R(&ModelartsResourceflavorsListOption{}, "modelarts-sku-list", "List Modelarts Pool", func(cli *huawei.SRegion, args *ModelartsResourceflavorsListOption) error {
+		resourceflavors, err := cli.GetIModelartsPoolSku()
+		if err != nil {
+			return err
+		}
+		printList(resourceflavors, len(resourceflavors), 0, 0, nil)
+		return nil
+	})
 }

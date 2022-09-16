@@ -12,20 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package compute
 
 import (
-	modules "yunion.io/x/onecloud/pkg/mcclient/modules/monitor"
-	options "yunion.io/x/onecloud/pkg/mcclient/options/monitor"
+	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
+	"yunion.io/x/onecloud/pkg/mcclient/modules"
+)
+
+type ModelartsPoolSkuManager struct {
+	modulebase.ResourceManager
+}
+
+var (
+	ModelartsPoolSku ModelartsPoolSkuManager
 )
 
 func init() {
-	cmd := NewResourceCmd(modules.CommonAlerts)
-	cmd.Create(new(options.CommonAlertCreateOptions))
-	cmd.List(new(options.CommonAlertListOptions))
-	cmd.Show(new(options.CommonAlertShowOptions))
-	cmd.Perform("enable", &options.CommonAlertShowOptions{})
-	cmd.Perform("disable", &options.CommonAlertShowOptions{})
-	cmd.BatchDelete(new(options.CommonAlertDeleteOptions))
-	cmd.Perform("config", &options.CommonAlertUpdateOptions{})
+	ModelartsPoolSku = ModelartsPoolSkuManager{modules.NewComputeManager("modelarts_pool_sku", "modelarts_pool_skus",
+		[]string{},
+		[]string{})}
+
+	modules.RegisterCompute(&ModelartsPoolSku)
 }

@@ -401,6 +401,10 @@ func (alert *SAlert) CustomizeCreate(ctx context.Context, userCred mcclient.Toke
 	return alert.SScopedResourceBase.CustomizeCreate(ctx, userCred, ownerId, query, data)
 }
 
+func (alert *SAlert) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
+	alert.SetStatus(userCred, monitor.ALERT_STATUS_READY, "")
+}
+
 func (alert *SAlert) PerformEnable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformEnableInput) (jsonutils.JSONObject, error) {
 	err := db.EnabledPerformEnable(alert, ctx, userCred, true)
 	if err != nil {
@@ -615,10 +619,10 @@ func (alert *SAlert) PerformTestRun(
 	query jsonutils.JSONObject,
 	input monitor.AlertTestRunInput,
 ) (*monitor.AlertTestRunOutput, error) {
-	return alert.testRunAlert(userCred, input)
+	return alert.TestRunAlert(userCred, input)
 }
 
-func (alert *SAlert) testRunAlert(userCred mcclient.TokenCredential, input monitor.AlertTestRunInput) (*monitor.AlertTestRunOutput, error) {
+func (alert *SAlert) TestRunAlert(userCred mcclient.TokenCredential, input monitor.AlertTestRunInput) (*monitor.AlertTestRunOutput, error) {
 	return AlertManager.GetTester().DoTest(alert, userCred, input)
 }
 
