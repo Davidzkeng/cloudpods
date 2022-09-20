@@ -28,7 +28,10 @@ const (
 )
 
 type ModelartsPoolCreateInput struct {
-	apis.StatusInfrasResourceBaseCreateInput
+	apis.VirtualResourceCreateInput
+	DeletePreventableCreateInput
+
+	CloudregionResourceInput
 	CloudproviderResourceInput
 }
 
@@ -51,6 +54,7 @@ type ModelartsPoolDetails struct {
 
 func (self ModelartsPoolDetails) GetMetricTags() map[string]string {
 	ret := map[string]string{
+		"id":                  self.Id,
 		"modelarts_pool_id":   self.Id,
 		"modelarts_pool_name": self.Name,
 		"status":              self.Status,
