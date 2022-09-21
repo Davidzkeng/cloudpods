@@ -250,7 +250,7 @@ func (manager *SParameterManager) ListItemFilter(
 	}
 
 	if len(query.Namespace) > 0 {
-		q = q.In("name", query.Name)
+		q = q.In("namespace", query.Namespace)
 	}
 
 	if db.IsAdminAllowList(userCred, manager).Result.IsAllow() {

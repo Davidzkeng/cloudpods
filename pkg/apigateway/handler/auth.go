@@ -1411,7 +1411,8 @@ func (h *AuthHandlers) PutResetPlan(ctx context.Context, w http.ResponseWriter, 
 	params := jsonutils.NewDict()
 	params.Add(jsonutils.NewString("user"), "namespace")
 	params.Add(jsonutils.NewString("system"), "scope")
-	if len(user_id) > 0 {
+	params.Add(jsonutils.NewStringArray([]string{"dashboard-system-default"}), "name")
+        if len(user_id) > 0 {
 		params.Add(jsonutils.NewString(user_id), "namespace_id")
 	}
 	ds, _ := yunionconf_modules.Parameters.List(s, params)
