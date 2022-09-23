@@ -102,6 +102,8 @@ type SHuaweiClient struct {
 
 	projects []SProject
 	regions  []SRegion
+
+	httpClient *http.Client
 }
 
 // 进行资源操作时参数account 对应数据库cloudprovider表中的account字段,由accessKey和projectID两部分组成，通过"/"分割。
@@ -478,6 +480,7 @@ func (self *SHuaweiClient) GetCapabilities() []string {
 		cloudprovider.CLOUD_CAPABILITY_SAML_AUTH,
 		cloudprovider.CLOUD_CAPABILITY_NAT,
 		cloudprovider.CLOUD_CAPABILITY_NAS,
+		cloudprovider.CLOUD_CAPABILITY_MODELARTES,
 	}
 	// huawei objectstore is shared across projects(subscriptions)
 	// to avoid multiple project access the same bucket
