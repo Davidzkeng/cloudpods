@@ -47,16 +47,10 @@ func NewInfluxdb(accessUrl string) *SInfluxdb {
 }
 
 func NewInfluxdbWithDebug(accessUrl string, debug bool) *SInfluxdb {
-	var dbName = ""
-	if accessUrl == "https://default-influxdb:30086" {
-		dbName = "telegraf"
-	}
-
 	inst := SInfluxdb{
 		accessUrl: accessUrl,
 		client:    httputils.GetDefaultClient(),
 		debug:     debug,
-		dbName:    dbName,
 	}
 	return &inst
 }

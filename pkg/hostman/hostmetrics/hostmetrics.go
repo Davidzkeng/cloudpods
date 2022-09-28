@@ -342,21 +342,21 @@ func (s *SGuestMonitorCollector) collectGmReport(
 			in := []rune(k)
 			in[0] = unicode.ToLower(in[0])
 			key := MeasurementsPrefix + string(in)
-			if key == MeasurementsPrefix+"cpu" {
-				cpu_usage, err := val.(jsonutils.JSONObject).GetString("usage_active")
-				if err != nil {
-					fmt.Println("not exist cpu usage")
-				}
-				UpdateDB(gm.Id, cpu_usage, MeasurementsPrefix+"cpu")
-			}
-
-			if key == MeasurementsPrefix+"mem" {
-				mem_usage, err := val.(jsonutils.JSONObject).GetString("used_percent")
-				if err != nil {
-					fmt.Println("not exist mem usage")
-				}
-				UpdateDB(gm.Id, mem_usage, MeasurementsPrefix+"mem")
-			}
+			//if key == MeasurementsPrefix+"cpu" {
+			//	cpu_usage, err := val.(jsonutils.JSONObject).GetString("usage_active")
+			//	if err != nil {
+			//		fmt.Println("not exist cpu usage")
+			//	}
+			//	UpdateDB(gm.Id, cpu_usage, MeasurementsPrefix+"cpu")
+			//}
+			//
+			//if key == MeasurementsPrefix+"mem" {
+			//	mem_usage, err := val.(jsonutils.JSONObject).GetString("used_percent")
+			//	if err != nil {
+			//		fmt.Println("not exist mem usage")
+			//	}
+			//	UpdateDB(gm.Id, mem_usage, MeasurementsPrefix+"mem")
+			//}
 			gmData.Set(key, val.(jsonutils.JSONObject))
 		}
 	}
