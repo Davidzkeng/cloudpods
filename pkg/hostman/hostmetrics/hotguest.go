@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	VM_CPU     = "vm_cpu"
-	VM_MEM     = "vm_mem"
+	AGENT_CPU  = "agent_cpu"
+	AGENT_MEM  = "agent_mem"
 	AGENT_DISK = "agent_disk"
 )
 
@@ -31,6 +31,7 @@ func GetInfluxAgentData(dbname []string, vm_id string) map[string]Usage {
 
 func AnalysisData(dbname []string, vm_id string) Usage {
 	db := influxdb.NewInfluxdbWithDebug(InfluxdbReader, false)
+	db.SetDatabase("telegraf")
 	usage_type := Usage{}
 	for _, name := range dbname {
 		query := fmt.Sprintf("SELECT * FROM %s where vm_id = '%s' order by time desc limit 1", name, vm_id)
@@ -56,14 +57,14 @@ func AnalysisData(dbname []string, vm_id string) Usage {
 								usage_type.DiskUsage = usage
 							}
 						}
-					case VM_MEM:
+					case AGENT_MEM:
 						if col == "used_percent" {
 							if val := obj.Values[0][i]; val != nil {
 								usage, _ = val.GetString()
 								usage_type.MemUsage = usage
 							}
 						}
-					case VM_CPU:
+					case AGENT_CPU:
 						if col == "usage_active" {
 							if val := obj.Values[0][i]; val != nil {
 								usage, _ = val.GetString()
@@ -132,7 +133,7 @@ func GetServerId() []string {
 }
 
 func HostGuestRun() {
-	dbNames := []string{AGENT_DISK}
+	dbNames := []string{AGENT_CPU, AGENT_MEM, AGENT_DISK}
 	result_list := GetServerId()
 	for _, vm_id := range result_list {
 		if vm_data := GetInfluxAgentData(dbNames, vm_id); len(vm_data) > 0 {
