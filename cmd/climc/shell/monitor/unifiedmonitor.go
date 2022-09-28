@@ -12,4 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tasks // import "yunion.io/x/onecloud/pkg/monitor/tasks"
+package monitor
+
+import (
+	"yunion.io/x/onecloud/cmd/climc/shell"
+	"yunion.io/x/onecloud/pkg/mcclient/modules/monitor"
+	options "yunion.io/x/onecloud/pkg/mcclient/options/monitor"
+)
+
+func init() {
+	cmd := shell.NewResourceCmd(monitor.UnifiedMonitorManager).WithKeyword("monitor")
+	cmd.Show(&options.SimpleQueryOptions{})
+}
