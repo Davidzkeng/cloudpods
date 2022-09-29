@@ -654,6 +654,7 @@ func StorageUsage(
 	}
 
 	if result_ssd.UsedCapacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_used_capacity")] = result_ssd.CapacityUsed
 		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_capacity_used")] = result_ssd.UsedCapacity
 		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "ssd_capacity_no_used")] = result_ssd.Capacity - result_ssd.UsedCapacity
 	}
@@ -669,12 +670,13 @@ func StorageUsage(
 		"hybrid",
 		"system",
 	)
-	
+
 	if result_hdd.Capacity >= 0 {
 		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity")] = result_hdd.Capacity
 	}
 
 	if result_hdd.UsedCapacity >= 0 {
+		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_used_capacity")] = result_hdd.CapacityUsed
 		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity_used")] = result_hdd.UsedCapacity
 		count[fmt.Sprintf("%s.medium_type.%s", sPrefix, "hybrid_capacity_no_used")] = result_hdd.Capacity - result_hdd.UsedCapacity
 	}
