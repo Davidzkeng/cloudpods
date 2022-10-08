@@ -46,6 +46,7 @@ type ModelartsPoolCreateOption struct {
 	InstanceType string `help:"Instance Type"`
 	WorkType     string `help:"Work Type"`
 	CpuArch      string `help:"Cpu Arch"`
+	NodeCount    int    `help:"Node Count"`
 
 	CloudregionId string `help:"Cloud Region ID"`
 }
@@ -64,7 +65,7 @@ func (opts *ModelartsPoolUpdateOption) GetId() string {
 }
 
 func (opts *ModelartsPoolUpdateOption) Params() (jsonutils.JSONObject, error) {
-	return options.ListStructToParams(opts)
+	return options.StructToParams(opts)
 }
 
 type ModelartsPoolSyncstatusOption struct {
@@ -76,5 +77,18 @@ func (opts *ModelartsPoolSyncstatusOption) GetId() string {
 }
 
 func (opts *ModelartsPoolSyncstatusOption) Params() (jsonutils.JSONObject, error) {
-	return options.ListStructToParams(opts)
+	return options.StructToParams(opts)
+}
+
+type ModelartsPoolChangeConfigOption struct {
+	ID        string `help:"Id"`
+	NodeCount int
+}
+
+func (opts *ModelartsPoolChangeConfigOption) GetId() string {
+	return opts.ID
+}
+
+func (opts *ModelartsPoolChangeConfigOption) Params() (jsonutils.JSONObject, error) {
+	return options.StructToParams(opts)
 }

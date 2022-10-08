@@ -70,6 +70,7 @@ type SModelartsPool struct {
 	SDeletePreventableResourceBase
 
 	InstanceType string `width:"72" charset:"ascii" nullable:"true" list:"user" update:"user" create:"optional"`
+	NodeCount    int    `nullable:"false" list:"user" create:"required"`
 	WorkType     string `width:"72" charset:"ascii" nullable:"true" list:"user" update:"user" create:"optional"`
 	// CPU 架构 x86|xarm
 	CpuArch string `width:"16" charset:"ascii" nullable:"true" list:"user" create:"admin_optional" update:"admin"`
@@ -149,6 +150,12 @@ func (man *SModelartsPoolManager) QueryDistinctExtraField(q *sqlchemy.SQuery, fi
 
 func (man *SModelartsPoolManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input api.ModelartsPoolCreateInput) (api.ModelartsPoolCreateInput, error) {
 	var err error
+	if input.NodeCount <= 0 {
+		input.NodeCount = 1
+	}
+	if input.NodeCount > 200 {
+		return input, errors.Wrap(errors.ErrNotSupported, "node count must between 1 and 200")
+	}
 	_, err = validators.ValidateModel(userCred, CloudproviderManager, &input.CloudproviderId)
 	if err != nil {
 		return input, err
@@ -358,6 +365,23 @@ func (self *SModelartsPool) StartDeleteTask(ctx context.Context, userCred mcclie
 	return nil
 }
 
+func (self *SModelartsPool) PerformChangeConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input api.ModelartsPoolChangeConfigInput) (jsonutils.JSONObject, error) {
+	if input.NodeCount == self.NodeCount {
+		return nil, nil
+	}
+	return nil, self.StartChangeConfigTask(ctx, userCred, input)
+}
+
+func (self *SModelartsPool) StartChangeConfigTask(ctx context.Context, userCred mcclient.TokenCredential, input api.ModelartsPoolChangeConfigInput) error {
+	params := jsonutils.Marshal(input).(*jsonutils.JSONDict)
+	task, err := taskman.TaskManager.NewTask(ctx, "ModelartsPoolChangeConfigTask", self, userCred, params, "", "", nil)
+	if err != nil {
+		return err
+	}
+	self.SetStatus(userCred, api.MODELARTS_POOL_STATUS_CHANGE_CONFIG, "")
+	return task.ScheduleRun(nil)
+}
+
 func (self *SModelartsPool) GetIRegion() (cloudprovider.ICloudRegion, error) {
 	provider, err := self.GetDriver(context.Background())
 	if err != nil {
@@ -400,6 +424,7 @@ func (self *SModelartsPool) SyncWithCloudModelartsPool(ctx context.Context, user
 		self.InstanceType = instanceName
 		self.WorkType = ext.GetWorkType()
 		self.CpuArch = sku.CpuArch
+		self.NodeCount = ext.GetNodeCount()
 		return nil
 	})
 	if err != nil {
@@ -428,6 +453,7 @@ func (self *SCloudregion) newFromCloudModelartsPool(ctx context.Context, userCre
 	pool.Status = ext.GetStatus()
 	pool.WorkType = ext.GetWorkType()
 	pool.InstanceType = ext.GetInstanceType()
+	pool.NodeCount = ext.GetNodeCount()
 	if createdAt := ext.GetCreatedAt(); !createdAt.IsZero() {
 		pool.CreatedAt = createdAt
 	}

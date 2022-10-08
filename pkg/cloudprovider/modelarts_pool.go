@@ -21,6 +21,7 @@ type ModelartsPoolCreateOption struct {
 	PeriodNum    uint
 	AutoRenew    uint
 	InstanceType string
+	NodeCount    int
 	NetworkId    string
 
 	WorkType string
@@ -29,4 +30,8 @@ type ModelartsPoolCreateOption struct {
 type Azs struct {
 	Az    string `json:"az"`
 	Count int    `json:"count"`
+}
+
+type ModelartsPoolChangeConfigOptions struct {
+	NodeCount int
 }
