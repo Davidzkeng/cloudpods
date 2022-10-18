@@ -96,7 +96,7 @@ func (p *DiskSchedtagPredicate) IsResourceFitInput(ctx context.Context, u *core.
 	storage := res.(*api.CandidateStorage)
 	if storage.Status != computeapi.STORAGE_ONLINE || storage.Enabled.IsFalse() {
 		return &FailReason{
-			fmt.Sprintf("Storage status is %s, enable is %v", storage.Status, storage.Enabled),
+			fmt.Sprintf("Storage %s status is %s, enable is %v", storage.GetName(), storage.Status, storage.Enabled),
 			StorageEnable,
 		}
 	}
@@ -144,6 +144,20 @@ func (p *DiskSchedtagPredicate) IsResourceFitInput(ctx context.Context, u *core.
 	} else {
 		return &FailReason{
 			Reason: fmt.Sprintf("Storage %s is not accessible due to domain ownership", storage.Name),
+			Type:   StorageOwnership,
+		}
+	}
+
+	// free capacity check
+	if storage.FreeCapacity < int64(d.SizeMb) {
+		return &FailReason{
+			Reason: fmt.Sprintf("Storage %s free capacity %d < %d(request)", storage.Name, storage.FreeCapacity, d.SizeMb),
+			Type:   StorageOwnership,
+		}
+	}
+	if storage.ActualFreeCapacity < int64(d.SizeMb) {
+		return &FailReason{
+			Reason: fmt.Sprintf("Storage %s actual free capacity %d < %d(request)", storage.Name, storage.ActualFreeCapacity, d.SizeMb),
 			Type:   StorageOwnership,
 		}
 	}

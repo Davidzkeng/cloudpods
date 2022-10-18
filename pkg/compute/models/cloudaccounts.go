@@ -445,20 +445,22 @@ func (manager *SCloudaccountManager) validateCreateData(
 	input.IsPublicCloud = providerDriver.IsPublicCloud()
 	input.IsOnPremise = providerDriver.IsOnPremise()
 
-	q := manager.Query().Equals("provider", input.Provider)
-	if len(input.Account) > 0 {
-		q = q.Equals("account", input.Account)
-	}
-	if len(input.AccessUrl) > 0 {
-		q = q.Equals("access_url", input.AccessUrl)
-	}
+	if !input.SkipDuplicateAccountCheck {
+		q := manager.Query().Equals("provider", input.Provider)
+		if len(input.Account) > 0 {
+			q = q.Equals("account", input.Account)
+		}
+		if len(input.AccessUrl) > 0 {
+			q = q.Equals("access_url", input.AccessUrl)
+		}
 
-	cnt, err := q.CountWithError()
-	if err != nil {
-		return input, httperrors.NewInternalServerError("check uniqness fail %s", err)
-	}
-	if cnt > 0 {
-		return input, httperrors.NewConflictError("The account has been registered")
+		cnt, err := q.CountWithError()
+		if err != nil {
+			return input, httperrors.NewInternalServerError("check uniqness fail %s", err)
+		}
+		if cnt > 0 {
+			return input, httperrors.NewConflictError("The account has been registered")
+		}
 	}
 
 	var proxyFunc httputils.TransportProxyFunc
@@ -511,7 +513,7 @@ func (manager *SCloudaccountManager) validateCreateData(
 	}
 
 	// check accountId uniqueness
-	if len(accountId) > 0 {
+	if len(accountId) > 0 && !input.SkipDuplicateAccountCheck {
 		cnt, err := manager.Query().Equals("account_id", accountId).CountWithError()
 		if err != nil {
 			return input, httperrors.NewInternalServerError("check account_id duplication error %s", err)
@@ -2574,7 +2576,7 @@ func (account *SCloudaccount) GetUsages() []db.IUsage {
 	}
 }
 
-func (self *SCloudaccount) GetAvailableExternalProject(local *db.STenant, projects []SExternalProject) *SExternalProject {
+func GetAvailableExternalProject(local *db.STenant, projects []SExternalProject) *SExternalProject {
 	var ret *SExternalProject = nil
 	for i := 0; i < len(projects); i++ {
 		if projects[i].Status == api.EXTERNAL_PROJECT_STATUS_AVAILABLE {
@@ -2615,7 +2617,7 @@ func (self *SCloudaccount) SyncProject(ctx context.Context, userCred mcclient.To
 		return "", errors.Wrapf(err, "GetExternalProjectsByProjectIdOrName(%s,%s)", projectId, project.Name)
 	}
 
-	extProj := self.GetAvailableExternalProject(project, projects)
+	extProj := GetAvailableExternalProject(project, projects)
 	if extProj != nil {
 		return extProj.ExternalId, nil
 	}
