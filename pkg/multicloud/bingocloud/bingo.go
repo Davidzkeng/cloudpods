@@ -116,11 +116,6 @@ func (cli *SBingoCloudClient) getDefaultClient(timeout time.Duration) *http.Clie
 	if cli.cpcfg.ProxyFunc != nil {
 		httputils.SetClientProxyFunc(client, cli.cpcfg.ProxyFunc)
 	}
-	tr := httputils.GetTransport(true)
-	tr.MaxIdleConnsPerHost = 5
-	tr.MaxIdleConns = 2
-	tr.IdleConnTimeout = 10 * time.Second
-	client.Transport = tr
 	return client
 }
 
