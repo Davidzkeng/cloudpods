@@ -343,7 +343,7 @@ func (self *SCollectByResourceIdDriver) CollectHostMetrics(ctx context.Context, 
 						Tags:      []influxdb.SKeyValue{},
 						Metrics: []influxdb.SKeyValue{
 							{
-								Key:   values.MetricType.Name(),
+								Key:   values.MetricType.Key(),
 								Value: strconv.FormatFloat(value.Value, 'E', -1, 64),
 							},
 						},

@@ -161,6 +161,12 @@ const (
 	// 宿主机磁盘写速率
 	// 支持平台: esxi
 	HOST_METRIC_TYPE_DISK_IO_WRITE_BPS TMetricType = "diskio.write_bps"
+	//宿主机磁盘读IOPS
+	// 支持平台: esxi
+	HOST_METRIC_TYPE_DISK_IO_READ_IOPS TMetricType = "diskio.read_iops"
+	//宿主机磁盘写IOPS
+	// 支持平台: esxi
+	HOST_METRIC_TYPE_DISK_IO_WRITE_IOPS TMetricType = "diskio.write_iops"
 	// 宿主机网络入速率
 	// 支持平台: esxi
 	HOST_METRIC_TYPE_NET_BPS_RX TMetricType = "net.bps_recv"
